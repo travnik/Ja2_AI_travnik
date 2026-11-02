@@ -91,6 +91,7 @@
 #ifdef JA2UB
 #include "Ja25_Tactical.h"
 #endif
+#include "CraftInfo.h"
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -331,6 +332,7 @@ void TransformationMenuPopup_Hide(void);
 void TransformationMenuPopup_Transform(TransformInfoStruct * Transform);
 BOOLEAN TransformationMenuPopup_TestValid(TransformInfoStruct * Transform);
 void ItemDescTransformRegionCallback( MOUSE_REGION *pRegion, INT32 reason );
+void TransformationMenuPopup_CraftInfo( UINT16 usItemIndex );
 void TransformationMenuPopup_Unjam();
 BOOLEAN TransformationMenuPopup_Unjam_TestValid(OBJECTTYPE* pObj);
 void TransformationMenuPopup_Clean();
@@ -9275,16 +9277,11 @@ void DrawItemTileCursor( )
 					gsUIHandleShowMoveGridLocation = sActionGridNo;
 					gfUIHandleShowMoveGrid = TRUE;
 
-
 					// Get AP cost
 					if ( MercPtrs[ gusUIFullTargetID ]->flags.uiStatusFlags & SOLDIER_ROBOT )
-					{
-						sAPCost = GetAPsToReloadRobot( gpItemPointerSoldier, MercPtrs[ gusUIFullTargetID ] );
-					}
+						sAPCost = GetAPsToReloadRobot(gpItemPointerSoldier, MercPtrs[gusUIFullTargetID], gpItemPointer, TRUE);
 					else
-					{
 						sAPCost = GetAPsToGiveItem( gpItemPointerSoldier, sActionGridNo );
-					}
 
 					gsCurrentActionPoints = sAPCost;
 				}
@@ -9427,26 +9424,26 @@ BOOLEAN HandleItemPointerClick( INT32 usMapPos )
 	// Determine what to do
 	if ( SelectedGuyInBusyAnimation( ) )
 	{
-		return( FALSE );
+		return FALSE;
 	}
 
 	if ( giUIMessageOverlay != -1 )
 	{
 		EndUIMessage( );
-		return( FALSE );
+		return FALSE;
 	}
 
 	// Don't allow if our soldier is a # of things...
 	if ( AM_AN_EPC( gpItemPointerSoldier ) || gpItemPointerSoldier->stats.bLife < OKLIFE || gpItemPointerSoldier->MercInDeepWater( ) )
 	{
-		return( FALSE );
+		return FALSE;
 	}
 
 	// This implies we have no path....
 	if ( gsCurrentActionPoints == 0 )
 	{
 		ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_UI_FEEDBACK, TacticalStr[ NO_PATH ] );
-		return( FALSE );
+		return FALSE;
 	}
 
 
@@ -9469,7 +9466,7 @@ BOOLEAN HandleItemPointerClick( INT32 usMapPos )
 
 		if ( gAnimControl[ MercPtrs[ gusUIFullTargetID ]->usAnimState ].uiFlags & ANIM_MOVING )
 		{
-			return( FALSE );
+			return FALSE;
 		}
 
 	}
@@ -9492,7 +9489,6 @@ BOOLEAN HandleItemPointerClick( INT32 usMapPos )
 	//	fGiveItem = !fGiveItem;
 	//}
 
-
 	// Get Pyth spaces away.....
 	sDist = PythSpacesAway( gpItemPointerSoldier->sGridNo, gusCurMousePos );
 
@@ -9504,7 +9500,7 @@ BOOLEAN HandleItemPointerClick( INT32 usMapPos )
 		!(gfDontChargeAPsToPickup && gsCurrentActionPoints == GetBasicAPsToPickupItem(gpItemPointerSoldier)) &&
 		!EnoughPoints(gpItemPointerSoldier, gsCurrentActionPoints, 0, TRUE))
 	{
-		return(FALSE);
+		return FALSE;
 	}
 
 	// Check if we have APs....
@@ -9526,18 +9522,14 @@ BOOLEAN HandleItemPointerClick( INT32 usMapPos )
 
 		// If the target is a robot,
 		if ( MercPtrs[ ubSoldierID ]->flags.uiStatusFlags & SOLDIER_ROBOT )
-		{
 			// Charge APs to reload robot!
-			sAPCost = GetAPsToReloadRobot( gpItemPointerSoldier,  MercPtrs[ ubSoldierID ] );
-		}
+			sAPCost = GetAPsToReloadRobot(gpItemPointerSoldier, MercPtrs[ubSoldierID], gpItemPointer, TRUE);
 		else
-		{
 			// Calculate action point costs!
 			sAPCost = GetAPsToGiveItem( gpItemPointerSoldier, usMapPos );
-		}
 
 		//CHRISL: This doesn't make sense to me.  If we take an item out of a stack and then click on something, why would we first attempt to put the item
-		//	back in the stack we took it from.  The item in the cursor should be recognized as a seperate stack at this point.
+		//	back in the stack we took it from.  The item in the cursor should be recognized as a separate stack at this point.
 		// Place it back in our hands!
 		gTempObject = *gpItemPointer;
 
@@ -9608,7 +9600,11 @@ BOOLEAN HandleItemPointerClick( INT32 usMapPos )
 							// OK, set UI
 							SetUIBusy( gpItemPointerSoldier->ubID );
 					 }
-
+				}
+				else
+				{
+					// sevenfm: if we cannot reload ROBOT because of wrong ammo, return FALSE, otherwise item in cursor will be destroyed later after return from function
+					return FALSE;
 				}
 
 				gfDontChargeAPsToPickup = FALSE;
@@ -9638,8 +9634,27 @@ BOOLEAN HandleItemPointerClick( INT32 usMapPos )
 				}
 			}
 		}
+		else
+		{
+			// sevenfm: if we cannot execute action because not enough APs, return FALSE, otherwise item in cursor will be destroyed later after return from function
+			return FALSE;
+		}
 
-		return( TRUE );
+		// sevenfm: in case item is still in cursor after all manipulations, return it to inventory to prevent disappearing
+		if (gpItemPointer && 
+			gpItemPointer->exists() && 
+			gpItemPointerSoldier &&
+			gpItemPointer->ubNumberOfObjects > 0)
+		{
+			// Return the item
+			if (!AutoPlaceObject(gpItemPointerSoldier, gpItemPointer, FALSE))
+			{
+				// Fallback: drop at merc's feet if inventory somehow became full
+				AddItemToPool(gpItemPointerSoldier->sGridNo, gpItemPointer, 1, gpItemPointerSoldier->pathing.bLevel, 0, -1);
+			}
+		}
+
+		return TRUE;
 	}
 
 	// CHECK IF WE ARE NOT ON THE SAME GRIDNO
@@ -9674,8 +9689,6 @@ BOOLEAN HandleItemPointerClick( INT32 usMapPos )
 
 				// Play animation....
 				// Don't show animation of dropping item, if we are not standing
-
-
 
 				switch ( gAnimControl[ gpItemPointerSoldier->usAnimState ].ubHeight )
 				{
@@ -9736,13 +9749,13 @@ BOOLEAN HandleItemPointerClick( INT32 usMapPos )
 					if ( !EnoughPoints( pSoldier, 3, 0, TRUE ) ||
 							 !EnoughPoints( gpItemPointerSoldier, 3, 0, TRUE ) )
 					{
-						return( FALSE );
+						return FALSE;
 					}
 
 					// Check LOS....
 					if ( !SoldierTo3DLocationLineOfSightTest( pSoldier, gpItemPointerSoldier->sGridNo,  gpItemPointerSoldier->pathing.bLevel, 3, TRUE, CALC_FROM_ALL_DIRS ) )
 					{
-						return( FALSE );
+						return FALSE;
 					}
 
 					// Charge AP values...
@@ -9798,12 +9811,12 @@ BOOLEAN HandleItemPointerClick( INT32 usMapPos )
 					  }
 					  }
 
-						return( TRUE );
+						return TRUE;
 					}
 					else
 					{
 						ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, pMessageStrings[ MSG_NO_ROOM_TO_PASS_ITEM ], ShortItemNames[ usItem ], pSoldier->name );
-  					return( FALSE );
+  						return FALSE;
 					}
 				}
 			}
@@ -9814,7 +9827,7 @@ BOOLEAN HandleItemPointerClick( INT32 usMapPos )
 			if ( gfBadThrowItemCTGH )
 			{
 				ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_UI_FEEDBACK, TacticalStr[ CANNOT_THROW_TO_DEST_STR ] );
-				return( FALSE );
+				return FALSE;
 			}
 
 			// Deduct points
@@ -9906,20 +9919,16 @@ BOOLEAN HandleItemPointerClick( INT32 usMapPos )
 	gfDontChargeAPsToPickup = FALSE;
 	EndItemPointer( );
 
-	return( TRUE );
+	return TRUE;
 }
 
 BOOLEAN ItemCursorInLobRange( INT32 usMapPos )
 {
 	// Draw item depending on distance from buddy
-	if ( GetRangeFromGridNoDiff( usMapPos, gpItemPointerSoldier->sGridNo ) > MIN_LOB_RANGE )
-	{
-		return( FALSE );
-	}
-	else
-	{
-		return( TRUE );
-	}
+	if ( GetRangeFromGridNoDiff( usMapPos, gpItemPointerSoldier->sGridNo ) <= MIN_LOB_RANGE )
+		return TRUE;
+
+	return FALSE;
 }
 
 BOOLEAN InSectorStackPopup( )
@@ -12685,8 +12694,8 @@ void GetHelpTextForItem( STR16 pzStr, OBJECTTYPE *pObject, SOLDIERTYPE *pSoldier
 				/*if ( gGameExternalOptions.fAdvRepairSystem && gGameExternalOptions.fDirtSystem && ( sThreshold < 100 || bDirt > 0 ) )
 				{
 					#ifdef CHINESE
-						//swprintf( pStr, L"%s [%d%£¥(%d%£¥)]\n%s %d\n%s %d\n%s %d (%d)\n%s (%d) %s\n%s %1.1f %s\n %s %.2f%%",
-						swprintf( pStr, L"%s [%d%£¥(%d%£¥)]\n%s %d (%d)\n%s (%d) %s\n%s %1.1f %s\n %s %.2f%%",
+						//swprintf( pStr, L"%s [%d%ï¿½ï¿½(%d%ï¿½ï¿½)]\n%s %d\n%s %d\n%s %d (%d)\n%s (%d) %s\n%s %1.1f %s\n %s %.2f%%",
+						swprintf( pStr, L"%s [%d%ï¿½ï¿½(%d%ï¿½ï¿½)]\n%s %d (%d)\n%s (%d) %s\n%s %1.1f %s\n %s %.2f%%",
 					#else
 						//swprintf( pStr, L"%s [%d%%(%d%%)]\n%s %d\n%s %d\n%s %d (%d)\n%s (%d) %s\n%s %1.1f %s\n%s %.2f%%",
 						swprintf(pStr, L"%s [%d%%(%d%%)]\n%s %d (%d)\n%s (%d) %s\n%s %1.1f %s\n%s %.2f%%",
@@ -12715,8 +12724,8 @@ void GetHelpTextForItem( STR16 pzStr, OBJECTTYPE *pObject, SOLDIERTYPE *pSoldier
 				else */if ( gGameExternalOptions.fAdvRepairSystem && sThreshold < 100 )
 				{
 					#ifdef CHINESE
-						//swprintf( pStr, L"%s [%d%£¥(%d%£¥)]\n%s %d\n%s %d\n%s %d (%d)\n%s (%d) %s\n%s %1.1f %s",
-						swprintf(pStr, L"%s [%d%£¥(%d%£¥)]\n%s %d (%d)\n%s (%d) %s\n%s %1.1f %s",
+						//swprintf( pStr, L"%s [%d%ï¿½ï¿½(%d%ï¿½ï¿½)]\n%s %d\n%s %d\n%s %d (%d)\n%s (%d) %s\n%s %1.1f %s",
+						swprintf(pStr, L"%s [%d%ï¿½ï¿½(%d%ï¿½ï¿½)]\n%s %d (%d)\n%s (%d) %s\n%s %1.1f %s",
 					#else
 						//swprintf( pStr, L"%s [%d%%(%d%%)]\n%s %d\n%s %d\n%s %d (%d)\n%s (%d) %s\n%s %1.1f %s",
 						swprintf(pStr, L"%s [%d%%(%d%%)]\n%s %d (%d)\n%s (%d) %s\n%s %1.1f %s",
@@ -12743,8 +12752,8 @@ void GetHelpTextForItem( STR16 pzStr, OBJECTTYPE *pObject, SOLDIERTYPE *pSoldier
 				/*else if ( gGameExternalOptions.fDirtSystem && bDirt > 0 )
 				{
 					#ifdef CHINESE
-						//swprintf( pStr, L"%s [%d%£¥]\n%s %d\n%s %d\n%s %d (%d)\n%s (%d) %s\n%s %1.1f %s\n %s %.2f%%",
-						swprintf(pStr, L"%s [%d%£¥]\n%s %d (%d)\n%s (%d) %s\n%s %1.1f %s\n %s %.2f%%",
+						//swprintf( pStr, L"%s [%d%ï¿½ï¿½]\n%s %d\n%s %d\n%s %d (%d)\n%s (%d) %s\n%s %1.1f %s\n %s %.2f%%",
+						swprintf(pStr, L"%s [%d%ï¿½ï¿½]\n%s %d (%d)\n%s (%d) %s\n%s %1.1f %s\n %s %.2f%%",
 					#else
 						//swprintf( pStr, L"%s [%d%%]\n%s %d\n%s %d\n%s %d (%d)\n%s (%d) %s\n%s %1.1f %s\n%s %.2f%%",
 						swprintf(pStr, L"%s [%d%%]\n%s %d (%d)\n%s (%d) %s\n%s %1.1f %s\n%s %.2f%%",
@@ -12772,8 +12781,8 @@ void GetHelpTextForItem( STR16 pzStr, OBJECTTYPE *pObject, SOLDIERTYPE *pSoldier
 				else
 				{
 					#ifdef CHINESE
-						//swprintf( pStr, L"%s [%d%£¥]\n%s %d\n%s %d\n%s %d (%d)\n%s (%d) %s\n%s %1.1f %s",
-						swprintf(pStr, L"%s [%d%£¥]\n%s %d (%d)\n%s (%d) %s\n%s %1.1f %s",
+						//swprintf( pStr, L"%s [%d%ï¿½ï¿½]\n%s %d\n%s %d\n%s %d (%d)\n%s (%d) %s\n%s %1.1f %s",
+						swprintf(pStr, L"%s [%d%ï¿½ï¿½]\n%s %d (%d)\n%s (%d) %s\n%s %1.1f %s",
 					#else
 						//swprintf( pStr, L"%s [%d%%]\n%s %d\n%s %d\n%s %d (%d)\n%s (%d) %s\n%s %1.1f %s",
 						swprintf(pStr, L"%s [%d%%]\n%s %d (%d)\n%s (%d) %s\n%s %1.1f %s",
@@ -13942,6 +13951,13 @@ void ItemDescTransformRegionCallback( MOUSE_REGION *pRegion, INT32 reason )
 			}
 		}
 		
+		// MVP: craft recipes viewer (text output)
+		{
+			POPUP_OPTION *pOption = new POPUP_OPTION(&std::wstring(gzCraftInfoMessage[CRAFTINFO_MENU_ITEM]), new popupCallbackFunction<void, UINT16>(TransformationMenuPopup_CraftInfo, gpItemDescObject->usItem));
+			gItemDescTransformPopup->addOption(*pOption);
+			fFoundTransformations = true;
+		}
+
 		if (!fFoundTransformations)
 		{
 			POPUP_OPTION * pOption = new POPUP_OPTION(&std::wstring(gzTransformationMessage[MSG_TRANSFORMATION_NO_ADJUSTMENTS]), new popupCallbackFunction<void, TransformInfoStruct*>(&TransformationMenuPopup_Transform, NULL));
@@ -14032,6 +14048,12 @@ void TransformationMenuPopup_Hide(void)
 	// Signal the renderer to stop drawing this menu.
 	gfItemDescTransformPopupVisible = FALSE;
 	fMapPanelDirty = TRUE;
+}
+
+// MVP: callback for the "View crafts (Text)" menu option - prints craft recipes as text messages
+void TransformationMenuPopup_CraftInfo(UINT16 usItemIndex)
+{
+	ShowItemCraftInfo( usItemIndex );
 }
 
 // This function handles callback when one of the options on the Transformation menu is clicked.
