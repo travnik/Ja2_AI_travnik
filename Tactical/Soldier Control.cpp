@@ -19847,10 +19847,10 @@ STR16	SOLDIERTYPE::PrintSkillDesc( INT8 iSkill )
 			swprintf(atStr, pTraitSkillsDenialStrings[TEXT_SKILL_DENIAL_X_TXT], New113Message[MSG113_WORKING_RADIO_SET]);
 			wcscat(skilldescarray, atStr);
 
-			swprintf(atStr, pTraitSkillsDenialStrings[TEXT_SKILL_DENIAL_X_TXT], pTraitSkillsDenialStrings[TEXT_SKILL_DENIAL_DEAFENED]);
+			swprintf(atStr, pTraitSkillsDenialStrings[TEXT_SKILL_DENIAL_DEAFENED]);
 			wcscat(skilldescarray, atStr);
 
-			swprintf(atStr, pTraitSkillsDenialStrings[TEXT_SKILL_DENIAL_X_TXT], pTraitSkillsDenialStrings[TEXT_SKILL_DENIAL_WALKMAN]);
+			swprintf(atStr, pTraitSkillsDenialStrings[TEXT_SKILL_DENIAL_WALKMAN]);
 			wcscat(skilldescarray, atStr);
 			break;
 
@@ -22959,9 +22959,15 @@ void SOLDIERTYPE::EVENT_SoldierBeginReloadRobot( INT32 sGridNo, UINT8 ubDirectio
 
 	if ( ubPerson != NOBODY && MercPtrs[ ubPerson ]->flags.uiStatusFlags & SOLDIER_ROBOT )
 	{
+		// sevenfm: charge AP to reload robot here
+		INT16 sAPCost = GetAPsToReloadRobot(this, MercPtrs[ubPerson], this->pTempObject, FALSE);
+		DeductPoints(this, sAPCost, 0);
+
 		// CHANGE DIRECTION AND GOTO ANIMATION NOW
 		if (this->ubDirection != ubDirection)
 		{
+			this->flags.fDontChargeTurningAPs = TRUE;
+			//this->flags.fDontChargeAPsForStanceChange = TRUE;
 			this->flags.uiStatusFlags |= SOLDIER_LOOK_NEXT_TURNSOLDIER;//shadooow: fix for vision not updating
 			this->EVENT_SetSoldierDesiredDirection(ubDirection);
 			this->EVENT_SetSoldierDirection(ubDirection);
@@ -22969,7 +22975,6 @@ void SOLDIERTYPE::EVENT_SoldierBeginReloadRobot( INT32 sGridNo, UINT8 ubDirectio
 
 		// CHANGE TO ANIMATION
 		this->EVENT_InitNewSoldierAnim( RELOAD_ROBOT, 0 , FALSE );
-
 	}
 }
 
