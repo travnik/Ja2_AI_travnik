@@ -1992,6 +1992,7 @@ BOOLEAN ValidMerge( UINT16 usMerge, UINT16 usItem )
 	return(EvaluateValidMerge(usMerge, usItem, &usIgnoreResult, &usIgnoreResult2, &ubIgnoreType, &ubIgnoreAPCost, &usPointsUsed, &usPointsAdded, &usExtraItem, &usExtraItemPointsUsed, &usSkillCheck, &usSkillDifficulty));
 }
 
+
 int GetPocketSizeByDimensions(int sizeX, int sizeY)
 {
 	static const UINT8 cisPocketSize[6][4] =
