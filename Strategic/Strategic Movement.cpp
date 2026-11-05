@@ -52,6 +52,7 @@
 
 #include "MilitiaSquads.h"
 #include "Vehicles.h"
+#include "SquadBivouacManager.h"	// SQUAD_BIVOUAC
 
 #ifdef JA2UB
 #include "Ja25Update.h"
@@ -3355,6 +3356,24 @@ INT32 GetSectorMvtTimeForGroup( UINT8 ubSector, UINT8 ubDirection, GROUP *pGroup
 		}
 	}
 	///////////////////////////////////////////////////////////////////////////////
+
+	// SQUAD_BIVOUAC: overload penalty — a squad carrying a heavy bivouac marches slower
+	// (applies to foot travel only; vehicles/air carry the load themselves)
+	if( pGroup->fPlayer && fFoot && !fCar && !fTruck && !fTracked && !fAir )
+	{
+		// find which squad this movement group belongs to
+		for( INT32 iSquad = 0; iSquad < NUMBER_OF_SQUADS; ++iSquad )
+		{
+			if( SquadMovementGroups[ iSquad ] == pGroup->ubGroupID )
+			{
+				if( SQBM().IsOverloaded( iSquad ) )
+				{
+					iBestTraverseTime = (INT32)SQBM().ApplyMovementTimePenalty( (UINT32)iBestTraverseTime, iSquad );
+				}
+				break;
+			}
+		}
+	}
 
 	return iBestTraverseTime;
 }

@@ -2405,6 +2405,11 @@ void LoadGameExternalOptions()
 	// sevenfm: show help picture
 	iniReader.ReadString("Extended Options", "HELP_PICTURE_KEY", NULL, sFFKeyBuffer, _countof(sFFKeyBuffer));
 	gGameExternalOptions.iHelpPictureKey = ParseKeyString(sFFKeyBuffer);
+
+	// SQUAD_BIVOUAC: squad bivouac inventory settings
+	gGameExternalOptions.usBivouacMinMercsRequired = (UINT16)iniReader.ReadInteger("Extended Options", "BIVOUAC_MIN_MERCS_REQUIRED", 1, 1, 20);
+	gGameExternalOptions.uiBivouacWeightCapacity = (UINT32)iniReader.ReadInteger("Extended Options", "BIVOUAC_WEIGHT_CAPACITY", 2000, 1, 1000000);
+	gGameExternalOptions.usBivouacMovementPenaltyMultiplier = (UINT16)iniReader.ReadInteger("Extended Options", "BIVOUAC_MOVEMENT_PENALTY_MULTIPLIER", 15, 0, 1000);
 }
 
 // SANDRO - externalization of all skill trait values and STOMP settings into separate file

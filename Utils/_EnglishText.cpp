@@ -6892,6 +6892,17 @@ STR16 gzLateLocalizedString[] =
 	L"You need to close the item description box first!",
 		
 	L"Cannot compress time - hostile civilians and/or bloodcats are in this sector.", // 65
+
+	//66 (reserved)
+	L"",
+
+	//67-68 SQUAD_BIVOUAC
+	L"There are items left in the squad's bivouac. Drop them in the sector before disbanding the squad?",
+	L"The squad's bivouac has been emptied into the sector.",
+	L"Viewing the squad's bivouac.",	// 69
+	L"Item moved to the squad's bivouac.",	// 70
+	L"Item moved to the sector inventory.",	// 71
+	L"The squad's bivouac is full.",	// 72
 };
 
 // HEADROCK HAM 3.5: Added sector name

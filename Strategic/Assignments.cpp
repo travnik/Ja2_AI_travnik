@@ -81,6 +81,7 @@ class SOLDIERTYPE;
 #include "Sound Control.h"
 // HEADROCK HAM 3.5: Include Facility data
 #include "Facilities.h"
+#include "SquadBivouacManager.h"	// SQUAD_BIVOUAC
 
 #include "Vehicles.h"
 
@@ -204,7 +205,7 @@ INT32 ghSnitchBox = -1;
 INT32 ghSnitchToggleBox = -1;
 INT32 ghSnitchSectorBox = -1;
 
-// Переменные-прокси для совместимости с оригинальными файлами игры
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 INT32 ghRadioBox = -1;
 INT32 ghRadioSectorBox = -1;
 INT32 ghRadioNumberBox = -1;
@@ -5225,6 +5226,16 @@ void FatigueCharacter( SOLDIERTYPE *pSoldier )
 			// sevenfm: square penalty
 			iBreathLoss = (INT32)(bMaxBreathLoss * iPercentEncumbrance * iPercentEncumbrance / (100 * 100));
 			bMaxBreathLoss = (float)min( 127, iBreathLoss );
+		}
+
+		// SQUAD_BIVOUAC: extra breath drain for carrying an overloaded squad bivouac
+		if( pSoldier->bAssignment < ON_DUTY )
+		{
+			INT32 iBivouacDrain = SQBM().GetOverloadBreathDrain( pSoldier->bAssignment );
+			if( iBivouacDrain > 0 )
+			{
+				bMaxBreathLoss = (float)min( 127, bMaxBreathLoss + iBivouacDrain );
+			}
 		}
 	}
 
@@ -10529,7 +10540,7 @@ void CreateDestroyMouseRegionsForRadioMenu(void)
 
 	if ((fShowRadioMenu == TRUE) && (fCreated == FALSE) && (g_StrategicMilitiaCall.GetRadioBoxID() != -1))
 	{
-		// Принудительно выстраиваем координаты перед фиксацией мыши
+		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 		DetermineBoxPositions();
 		DefineRadioBoxRegions(g_StrategicMilitiaCall.GetRadioBoxID(), gRadioMenuRegion, RadioMenuMvtCallBack, RadioMenuBtnCallback);
 		fCreated = TRUE;
@@ -10548,7 +10559,7 @@ void CreateDestroyMouseRegionsForRadioSectorMenu(void)
 
 	if ((fShowRadioSectorMenu == TRUE) && (fCreated == FALSE) && (g_StrategicMilitiaCall.GetSectorBoxID() != -1))
 	{
-		// Синхронизируем положение 3-го меню и сразу вешаем мышь
+		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ 3-пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 		DetermineBoxPositions();
 		DefineRadioBoxRegions(g_StrategicMilitiaCall.GetSectorBoxID(), gRadioSectorMenuRegion, RadioSectorMenuMvtCallBack, RadioSectorMenuBtnCallback);
 		fCreated = TRUE;
@@ -10567,7 +10578,7 @@ void CreateDestroyMouseRegionsForRadioNumberMenu(void)
 
 	if ((fShowRadioNumberMenu == TRUE) && (fCreated == FALSE) && (g_StrategicMilitiaCall.GetNumberBoxID() != -1))
 	{
-		// Синхронизируем положение 4-го меню и вешаем мышь
+		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ 4-пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 		DetermineBoxPositions();
 		DefineRadioBoxRegions(g_StrategicMilitiaCall.GetNumberBoxID(), gRadioNumberMenuRegion, RadioNumberMenuMvtCallBack, RadioNumberMenuBtnCallback);
 		fCreated = TRUE;
@@ -10654,7 +10665,7 @@ void RadioMenuBtnCallback(MOUSE_REGION* pRegion, INT32 iReason)
 			fShowRadioMenu = FALSE;
 		}
 		else if ((iValue == RADIO_MENU_SCAN) && pSoldier) {
-			// Логика сканирования радиостанцией...
+			// пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ...
 		}
 		else if ((iValue == RADIO_MENU_CALL_MILITIA) && pSoldier) {
 			if (g_StrategicMilitiaCall.CanCharacterCallMilitia(pSoldier)) {
@@ -10697,28 +10708,28 @@ void RadioSectorMenuBtnCallback(MOUSE_REGION* pRegion, INT32 iReason)
 
 void RadioNumberMenuBtnCallback(MOUSE_REGION* pRegion, INT32 iReason)
 {
-	// Используем константу NUM_MENU_ALL для размера массива, чтобы избежать предупреждений компилятора
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ NUM_MENU_ALL пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 	static const UINT16 usRadioNumbers[MilitiaCall::NUM_MENU_ALL] = { 5, 10, 15, 20, 30, 40 };
 	INT32 iValue = MSYS_GetRegionUserData(pRegion, 0);
 	SOLDIERTYPE* pSoldier = GetSelectedAssignSoldier(FALSE);
 
 	if (iReason & MSYS_CALLBACK_REASON_LBUTTON_UP)
 	{
-		// ИСПРАВЛЕНИЕ: Заменили ненайденную RADIO_NUMBER_MENU_CANCEL на константу из класса
+		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ RADIO_NUMBER_MENU_CANCEL пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 		if (iValue == MilitiaCall::NUM_MENU_CANCEL) {
 			fShowRadioNumberMenu = FALSE;
 		}
 		else if (pSoldier && g_StrategicMilitiaCall.GetRadioSelectedSector() != 0xFFFF) {
 			UINT16 usNumber = 0;
 
-			// ИСПРАВЛЕНИЕ: Заменили магическое число 6 на константу MilitiaCall::NUM_MENU_ALL
-			if (iValue == MilitiaCall::NUM_MENU_ALL) { // Пулл "Все"
+			// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ 6 пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ MilitiaCall::NUM_MENU_ALL
+			if (iValue == MilitiaCall::NUM_MENU_ALL) { // пїЅпїЅпїЅпїЅ "пїЅпїЅпїЅ"
 				UINT16 usSelectedSector = g_StrategicMilitiaCall.GetRadioSelectedSector();
 
-				// Вызываем глобальную функцию движка JA2 для подсчета, так как метод класса приватный
+				// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ JA2 пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 				usNumber = CountAllMilitiaInSector(SECTORX(usSelectedSector), SECTORY(usSelectedSector));
 			}
-			// ИСПРАВЛЕНИЕ: Безопасная проверка диапазона строк количества
+			// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 			else if (iValue >= 0 && iValue < MilitiaCall::NUM_MENU_ALL) {
 				usNumber = usRadioNumbers[iValue];
 			}
@@ -10727,7 +10738,7 @@ void RadioNumberMenuBtnCallback(MOUSE_REGION* pRegion, INT32 iReason)
 				g_StrategicMilitiaCall.ExecuteStrategicMilitiaCall(pSoldier, usNumber);
 			}
 
-			// Закрываем всю цепочку меню (фича успешно отработала)
+			// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
 			fShowRadioNumberMenu = FALSE;
 			fShowRadioSectorMenu = FALSE;
 			fShowRadioMenu = FALSE;
@@ -15257,7 +15268,7 @@ BOOLEAN HandleAssignmentExpansionAndHighLightForRadioSectorMenu(void)
 {
 	if (fShowRadioNumberMenu)
 	{
-		// ИСПРАВЛЕНИЕ: Берем ID бокса и индекс подсвеченной строки напрямую из класса фичи
+		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅ ID пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 		INT32 hSectorBox = g_StrategicMilitiaCall.GetSectorBoxID();
 		INT32 iHighLine = g_StrategicMilitiaCall.GetSectorMenuHighLine();
 

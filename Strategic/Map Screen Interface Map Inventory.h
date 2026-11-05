@@ -67,6 +67,14 @@ extern INT32 MAP_INVENTORY_POOL_SLOT_COUNT;
 BOOLEAN IsMapScreenWorldItemInvisibleInMapInventory( WORLDITEM *pWorldItem );
 BOOLEAN IsMapScreenWorldItemVisibleInMapInventory( WORLDITEM *pWorldItem );
 
+// SQUAD_BIVOUAC: compact left-panel bivouac inventory (visual clone of the vehicle trunk UI).
+// Lives entirely inside the map area; the fullscreen sector inventory stays closed while active.
+extern BOOLEAN	fShowBivouacPanel;
+void CreateDestroyBivouacPanel( void );					// per-frame create/destroy driver (call next to CreateDestroyMapInventoryPoolButtons)
+BOOLEAN IsBivouacPanelAllowedForSelectedChar( void );	// access check for the 'B' hotkey
+void CloseBivouacPanel( BOOLEAN fSaveStash );			// store stash back into SQBM() and switch off
+void RenderBivouacPanel( void );						// called from RenderMapBorder like BlitInventoryPoolGraphic
+
 //dnl ch51 081009
 #define INVPOOLLISTNUM 10
 BOOLEAN	CopySectorInventoryToInventoryPoolQ(UINT8 idx);

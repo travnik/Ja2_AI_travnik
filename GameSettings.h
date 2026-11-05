@@ -1551,7 +1551,12 @@ typedef struct
 	BOOLEAN fAllowCarsDrivingOverPeople;
 	BOOLEAN fAllowTanksDrivingOverPeople;
 	UINT8 ubCarsRammingMaxStructureArmour;
-	UINT8 ubTanksRammingMaxStructureArmour;	
+	UINT8 ubTanksRammingMaxStructureArmour;
+
+	// SQUAD_BIVOUAC: squad bivouac inventory settings
+	UINT16	usBivouacMinMercsRequired;			// minimal number of live mercs in squad to access the bivouac
+	UINT32	uiBivouacWeightCapacity;			// bivouac total weight capacity (internal JA2 weight units)
+	UINT16	usBivouacMovementPenaltyMultiplier;	// overload penalty scale: travel time % and breath drain per overload percent
 
 } GAME_EXTERNAL_OPTIONS;
 
