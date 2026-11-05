@@ -44,6 +44,41 @@ INT8 SquadMovementGroups[ NUMBER_OF_SQUADS ];
 
 BOOLEAN fExitingVehicleToSquad = FALSE;
 
+// SQUAD_BIVOUAC: one-shot flag - set by the bivouac disband YES-callback after the
+// items were dumped to the floor, so the blocked removal can be retried without
+// showing the YES/NO box again. Cleared immediately after being consumed.
+BOOLEAN gBivouacAllowRemovalOnce = FALSE;
+
+// SQUAD_BIVOUAC: TRUE if removing pCharacter from his squad would empty it while the
+// squad's bivouac still holds items (i.e. the disband interception would trigger).
+// Used as a PRE-CHECK before any assignment change starts, so the merc's assignment
+// is never modified when the player later answers NO to the dump dialog.
+BOOLEAN WouldRemovalTriggerBivouacGuard( SOLDIERTYPE *pCharacter )
+{
+	if( pCharacter == NULL || !pCharacter->bActive || pCharacter->stats.bLife <= 0 )
+	{
+		return( FALSE );
+	}
+
+	if( gTacticalStatus.uiFlags & LOADING_SAVED_GAME )
+	{
+		return( FALSE );
+	}
+
+	INT8 bSquad = SquadCharacterIsIn( pCharacter );
+	if( bSquad == -1 )
+	{
+		return( FALSE );
+	}
+
+	if( NumberOfPeopleInSquad( bSquad ) != 1 )
+	{
+		return( FALSE );
+	}
+
+	return( !SQBM().IsEmpty( bSquad ) );
+}
+
 extern void CheckForAndAddMercToTeamPanel( SOLDIERTYPE *pSoldier );
 extern void RemoveAllPlayersFromSlot( );
 extern INT32 iHelicopterVehicleId;
@@ -544,7 +579,12 @@ BOOLEAN RemoveCharacterFromSquads( SOLDIERTYPE *pCharacter )
 				// and the next removal attempt succeeds (bivouac is empty by then).
 				// NOTE: never intercept while a savegame is being loaded/unloaded - squad
 				// pointers and bivouac data are stale garbage at that point.
-				if ( !( gTacticalStatus.uiFlags & LOADING_SAVED_GAME ) &&
+				if ( gBivouacAllowRemovalOnce )
+				{
+					// one-shot bypass granted by the bivouac YES-callback: consume it and proceed
+					gBivouacAllowRemovalOnce = FALSE;
+				}
+				else if ( !( gTacticalStatus.uiFlags & LOADING_SAVED_GAME ) &&
 						pCharacter->stats.bLife > 0 &&
 						NumberOfPeopleInSquad( (INT8)iCounterA ) == 1 &&
 						!SQBM().HandleLastMercLeavingSquad( iCounterA, pCharacter ) )

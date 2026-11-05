@@ -158,6 +158,26 @@ public:
 	// the static member below is registered directly with DoMessageBox/DoMapMessageBox.
 	static void	BivouacDisbandMessageBoxCallBack( UINT8 bExitValue );
 
+	// SQUAD_BIVOUAC: pending assignment change deferred to the disband YES-callback.
+	// When the last merc of a squad with a non-empty bivouac is being reassigned, the
+	// caller stores the requested change here INSTEAD of performing it; if the player
+	// answers YES, items are dumped and the change is replayed; on NO it is discarded.
+	struct PendingAssignChange
+	{
+		UINT16	usSoldierID;
+		INT8	bAssignment;
+		INT32	iParam1;
+		INT32	iParam2;
+		INT32	iParam3;
+		BOOLEAN	fValid;
+	};
+
+	// Queue a SetSoldierAssignment()-call to be executed after the player confirms the dump.
+	void	SetPendingAssignmentChange( SOLDIERTYPE* pSoldier, INT8 bAssignment, INT32 iParam1, INT32 iParam2, INT32 iParam3 );
+
+	// Fetch the deferred assignment change (if any) and consume it. Returns FALSE if none pending.
+	BOOLEAN	TakePendingAssignmentChange( UINT16& usSoldierID, INT8& bAssignment, INT32& iParam1, INT32& iParam2, INT32& iParam3 );
+
 	////////////////////////////////////////////////////////////////////////////////////////////
 	// Save / Load (savegame)
 	////////////////////////////////////////////////////////////////////////////////////////////
@@ -224,6 +244,9 @@ private:
 	// disband interception state (squad whose bivouac triggered the YES/NO box)
 	INT32			m_iPendingDisbandSquad;
 	UINT16			m_usPendingDisbandSoldierID;
+
+	// deferred assignment change executed when the player confirms the dump
+	PendingAssignChange	m_PendingAssignChange;
 
 	// squad whose bivouac is currently displayed in the map screen sector inventory UI (-1 = none)
 	INT32			m_iActiveUISquad;

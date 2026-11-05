@@ -26,12 +26,17 @@
 	#include "Assignments.h"			// ON_DUTY, NUMBER_OF_SQUADS related enums
 	#include "Game Clock.h"				// PauseGame(), LockPauseState()
 	#include "Map Screen Interface Map.h"	// bSelectedInfoChar, gCharactersList
+	#include "Map Screen Interface Map Inventory.h"	// fShowMapInventoryPool, pInventoryPoolList
+	#include "Map Screen Interface.h"	// sSelMapX/sSelMapY, iCurrentMapSectorZ
 	#include "SkillCheck.h"				// EffectiveStrength()
 	#include "Soldier Control.h"		// HAS_SKILL_TRAIT, GetBackgroundValue
 	#include "interface.h"				// BG_PERC_CARRYSTRENGTH
 #endif
 
 #include "SquadBivouacManager.h"
+
+// SQUAD_BIVOUAC: sector inventory snapshot list (defined in Map Screen Interface Map Inventory.cpp)
+extern std::vector<WORLDITEM> pUnSeenItems;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Squad Bivouac Manager - implementation
@@ -47,6 +52,13 @@ SquadBivouacManager::SquadBivouacManager()
 	, m_usPendingDisbandSoldierID( 0 )
 	, m_iActiveUISquad( -1 )
 {
+	m_PendingAssignChange.fValid = FALSE;
+	m_PendingAssignChange.usSoldierID = 0;
+	m_PendingAssignChange.bAssignment = -1;
+	m_PendingAssignChange.iParam1 = 0;
+	m_PendingAssignChange.iParam2 = 0;
+	m_PendingAssignChange.iParam3 = 0;
+
 	for ( INT32 i = 0; i < NUMBER_OF_SQUADS; ++i )
 	{
 		m_Bivouac[i].initialize();
@@ -151,6 +163,7 @@ void SquadBivouacManager::Initialize()
 	m_iPendingDisbandSquad = -1;
 	m_usPendingDisbandSoldierID = 0;
 	m_iActiveUISquad = -1;
+	m_PendingAssignChange.fValid = FALSE;
 
 	// config values are NOT read here.
 	// They are read once in LoadGameExternalOptions() (GameSettings.cpp) into
@@ -240,6 +253,132 @@ void SquadBivouacManager::DumpToFloor( INT32 iSquadID, INT16 sMapX, INT16 sMapY,
 
 	BOOLEAN fLoadedSector = ( ( gWorldSectorX == sMapX ) && ( gWorldSectorY == sMapY ) && ( gbWorldSectorZ == bMapZ ) );
 
+	// SQUAD_BIVOUAC: while the fullscreen sector inventory is open, the sector storage is
+	// shadowed by the pInventoryPoolList snapshot; closing the panel overwrites the storage
+	// with that snapshot (SaveSeenAndUnseenItems / ReBuildWorldItemStashForLoadedSector).
+	// If the open panel shows the dump sector, the items must go into the snapshot instead -
+	// otherwise they are lost on panel close.
+	// EXCEPTION: when the panel is open in BIVOUAC UI mode, the snapshot holds the bivouac
+	// slots of a squad (not the sector storage). Appending to it would lose the items
+	// (StoreBivouacStash reads only the first BIVOUAC_NUM_SLOTS entries), and closing the
+	// panel would write the dumped items back into the bivouac. So in that mode the dump
+	// always goes to the floor/temp-file, and the panel snapshot is invalidated instead.
+	BOOLEAN fBivouacUIActive = m_fBivouacUIMode;
+
+	// panel currently shows THIS squad's bivouac: it holds the working copy of the slots
+	// (slots are only synced back on close), so sync it in first - otherwise items the
+	// player just dropped into the panel would not be part of the dump
+	BOOLEAN fPanelShowsThisBivouac = ( fBivouacUIActive && m_iActiveUISquad == iSquadID );
+	if ( fPanelShowsThisBivouac )
+	{
+		StoreBivouacStash( pInventoryPoolList );
+	}
+
+	BOOLEAN fSectorInventoryShadowsDumpSector = FALSE;
+	if ( !fBivouacUIActive &&
+		 fShowMapInventoryPool &&
+		 sSelMapX == sMapX && sSelMapY == sMapY && iCurrentMapSectorZ == bMapZ )
+	{
+		fSectorInventoryShadowsDumpSector = TRUE;
+	}
+
+	// SQUAD_BIVOUAC: fill the FIRST FREE slot of the open sector-inventory snapshot instead
+	// of appending to the end - items then appear on the page the player is looking at,
+	// no need to close/reopen the panel
+	auto BivouacAppendToSectorInventory = []( OBJECTTYPE* pObj, INT32 sGridNo, BOOLEAN fLoadedSector )
+	{
+		WORLDITEM wi;
+		wi.initialize( );
+		wi.fExists = TRUE;
+		wi.bVisible = 1;
+		wi.usFlags = WORLD_ITEM_REACHABLE;
+		wi.ubLevel = 0;
+		wi.bRenderZHeightAboveLevel = 0;
+		wi.object = *pObj;
+
+		if ( fLoadedSector )
+		{
+			// resolve now: AddItemToPool() would spam a beta warning for every -1 item
+			INT32 sDropGridNo = sGridNo;
+			if ( TileIsOutOfBounds( sDropGridNo ) )
+			{
+				sDropGridNo = RandomGridNo( );
+			}
+			wi.sGridNo = sDropGridNo;
+		}
+		else
+		{
+			// unloaded sector: temp-file path understands this flag and resolves the
+			// position when the sector is loaded
+			wi.sGridNo = -1;
+			wi.usFlags |= WORLD_ITEM_GRIDNO_NOT_SET_USE_ENTRY_POINT;
+		}
+
+		// find the first free slot in the snapshot (kept in place, empty slots within the
+		// list are preserved by the panel code paths); fall back to appending at the end
+		UINT32 uiSlot = pInventoryPoolList.size( );
+		for ( UINT32 i = 0; i < pInventoryPoolList.size( ); ++i )
+		{
+			if ( !pInventoryPoolList[i].fExists && !pInventoryPoolList[i].object.exists() )
+			{
+				uiSlot = i;
+				break;
+			}
+		}
+
+		if ( uiSlot < pInventoryPoolList.size( ) )
+		{
+			pInventoryPoolList[uiSlot] = wi;
+		}
+		else
+		{
+			pInventoryPoolList.push_back( wi );
+		}
+
+		// the non-INVFIX_Moa code paths require pInventoryPoolList and pUnSeenItems
+		// to stay the same size (RefreshSeenAndUnseenPools indexes both blindly)
+		pUnSeenItems.resize( pInventoryPoolList.size( ) );
+	};
+
+	if ( fSectorInventoryShadowsDumpSector )
+	{
+		// sector inventory panel shadows this sector: append everything to its snapshot
+		for ( UINT32 i = 0; i < BIVOUAC_NUM_SLOTS; ++i )
+		{
+			OBJECTTYPE* pObj = &(m_Bivouac[iIndex].Slots[i]);
+			if ( !pObj->exists() )
+			{
+				continue;
+			}
+
+			BivouacAppendToSectorInventory( pObj, sDropGridNo, fLoadedSector );
+
+			// clear the slot
+			DeleteObj( pObj );
+		}
+
+		// SQUAD_BIVOUAC: recalc page count and list size NOW. ResizeInventoryList() normally
+		// runs every frame inside BlitInventoryPoolGraphic(), but the panel can be closed in
+		// the same frame the items were appended (disband dialog YES -> character removed ->
+		// panel force-closed) before any render happens. The non-INVFIX_Moa save path
+		// (SaveSeenAndUnseenItems) only compacts/saves the first
+		// MAP_INVENTORY_POOL_SLOT_COUNT * (iLastInventoryPoolPage + 1) entries - without this
+		// call the appended items sit beyond that window and are silently lost.
+		{
+			extern void ResizeInventoryList( void );
+			ResizeInventoryList( );
+		}
+
+		// SQUAD_BIVOUAC: force the sector inventory panel to repaint immediately so the
+		// dumped items show up without closing/reopening the panel
+		{
+			extern BOOLEAN fMapPanelDirty;
+			fMapPanelDirty = TRUE;
+		}
+
+		return;
+	}
+
 	if ( fLoadedSector )
 	{
 		// loaded sector: add each stack to the item pool individually
@@ -287,11 +426,27 @@ void SquadBivouacManager::DumpToFloor( INT32 iSquadID, INT16 sMapX, INT16 sMapY,
 
 		if ( uiCount > 0 )
 		{
+			// SQUAD_BIVOUAC: sector inventory panel is open for this sector - its snapshot
+			// will overwrite the storage on close, so append the items there directly
+			// (the shadowing branch above already handled that case, so this is unreachable
+			// for the panel-open path; kept for safety)
+			if ( fSectorInventoryShadowsDumpSector )
+			{
+				for ( UINT32 i = 0; i < uiCount; ++i )
+				{
+					BivouacAppendToSectorInventory( &pTempObjects[i], sDropGridNo, fLoadedSector );
+				}
+
+				return;
+			}
+
 			if ( TileIsOutOfBounds( sDropGridNo ) )
 			{
-				// -1 gridno => items get the "use entry point" flag inside AddItemsToUnLoadedSector
+				// no gridno: use the entry-point mechanism (resolved to the map's center
+				// gridno when the sector is loaded). Do NOT use FIND_SWEETSPOT here - it
+				// would run pathing from the invalid gridno -1 and misplace/lose the items.
 				AddItemsToUnLoadedSector( sMapX, sMapY, bMapZ, -1, uiCount, &(pTempObjects[0]),
-											0, WOLRD_ITEM_FIND_SWEETSPOT_FROM_GRIDNO | WORLD_ITEM_REACHABLE, 0, 1, FALSE );
+											0, WORLD_ITEM_REACHABLE | WORLD_ITEM_GRIDNO_NOT_SET_USE_ENTRY_POINT, 0, 1, FALSE );
 			}
 			else
 			{
@@ -299,6 +454,17 @@ void SquadBivouacManager::DumpToFloor( INT32 iSquadID, INT16 sMapX, INT16 sMapY,
 											0, WORLD_ITEM_REACHABLE, 0, 1, FALSE );
 			}
 		}
+	}
+
+	// SQUAD_BIVOUAC: the panel is showing this squad's bivouac (working copy). The slots
+	// are empty now; refresh the panel snapshot so closing the panel cannot write the
+	// just-dumped items back into the bivouac.
+	if ( fPanelShowsThisBivouac )
+	{
+		BuildBivouacStash( pInventoryPoolList );
+
+		// keep the snapshot lists the same size (RefreshSeenAndUnseenPools indexes both blindly)
+		pUnSeenItems.resize( pInventoryPoolList.size( ) );
 	}
 }
 
@@ -516,6 +682,46 @@ void SquadBivouacManager::SetPendingDisbandSquad( INT32 iSquadID, UINT16 usSoldi
 	m_usPendingDisbandSoldierID = usSoldierID;
 }
 
+// SQUAD_BIVOUAC: remember an assignment change to replay after the dump is confirmed.
+// The actual SetSoldierAssignment() call is performed via the extern declared below
+// (defined in Assignments.cpp) to avoid a circular include.
+extern void BivouacReplayPendingAssignmentChange( void );
+
+void SquadBivouacManager::SetPendingAssignmentChange( SOLDIERTYPE* pSoldier, INT8 bAssignment, INT32 iParam1, INT32 iParam2, INT32 iParam3 )
+{
+	if ( pSoldier == NULL )
+	{
+		m_PendingAssignChange.fValid = FALSE;
+		return;
+	}
+
+	m_PendingAssignChange.usSoldierID = pSoldier->ubID;
+	m_PendingAssignChange.bAssignment = bAssignment;
+	m_PendingAssignChange.iParam1 = iParam1;
+	m_PendingAssignChange.iParam2 = iParam2;
+	m_PendingAssignChange.iParam3 = iParam3;
+	m_PendingAssignChange.fValid = TRUE;
+}
+
+BOOLEAN SquadBivouacManager::TakePendingAssignmentChange( UINT16& usSoldierID, INT8& bAssignment, INT32& iParam1, INT32& iParam2, INT32& iParam3 )
+{
+	if ( !m_PendingAssignChange.fValid )
+	{
+		return( FALSE );
+	}
+
+	// consume the request (guards against re-entrancy)
+	m_PendingAssignChange.fValid = FALSE;
+
+	usSoldierID	= m_PendingAssignChange.usSoldierID;
+	bAssignment	= m_PendingAssignChange.bAssignment;
+	iParam1		= m_PendingAssignChange.iParam1;
+	iParam2		= m_PendingAssignChange.iParam2;
+	iParam3		= m_PendingAssignChange.iParam3;
+
+	return( TRUE );
+}
+
 BOOLEAN SquadBivouacManager::HandleLastMercLeavingSquad( INT32 iSquadID, SOLDIERTYPE* pLastSoldier )
 {
 	// empty bivouac -> nothing to protect, allow the removal
@@ -572,14 +778,22 @@ void SquadBivouacManager::BivouacDisbandMessageBoxCallBack( UINT8 bExitValue )
 		// clear the pending marker: the caller of HandleLastMercLeavingSquad() may now retry the removal
 		m.SetPendingDisbandSquad( -1, 0 );
 
-		// notify the squad system that the bivouac is now empty so the pending removal can proceed;
-		// the actual removal retry is performed by the hook in Squads.cpp (see gBivouacAllowRemovalOnce).
-	}
+		// SQUAD_BIVOUAC: if a deferred assignment change is waiting (last merc of the squad
+		// was being reassigned when the guard triggered), grant a one-shot removal bypass so
+		// the assignment code's RemoveCharacterFromSquads() succeeds now that the bivouac is
+		// empty, then replay the deferred change (it re-runs the removal itself).
+		if ( m.m_PendingAssignChange.fValid )
+		{
+			extern BOOLEAN gBivouacAllowRemovalOnce;
+			gBivouacAllowRemovalOnce = TRUE;
+
+			BivouacReplayPendingAssignmentChange( );
+		}	}
 	else // MSG_BOX_RETURN_NO (or ESC)
 	{
-		// cancel: nothing is dumped. The removal call that triggered the check has already been
-		// aborted by the hook in Squads.cpp (it checks the return value of HandleLastMercLeavingSquad),
-		// so the last merc simply stays in the squad.
+		// cancel: nothing is dumped, the deferred assignment change (if any) is discarded -
+		// the merc keeps his current squad and assignment untouched
+		m.m_PendingAssignChange.fValid = FALSE;
 		m.SetPendingDisbandSquad( -1, 0 );
 	}
 }
