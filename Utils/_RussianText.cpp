@@ -6900,6 +6900,9 @@ STR16 gzLateLocalizedString[] =
 	L"Предмет перемещен в бивуак отряда.",	// 70
 	L"Предмет перемещен в инвентарь сектора.",	// 71
 	L"Бивуак отряда полон.",	// 72
+	L"Бивуак отряда %d",	// 73 SQUAD_BIVOUAC panel header: squad title (squad number)
+	L"Текущий/максимальный вес %d.%d/%d.%d",	// 74 SQUAD_BIVOUAC panel header: current/max weight (kg, one decimal)
+	L"Текущий/максимальный вес ",	// 75 SQUAD_BIVOUAC panel header: weight line prefix (no formatting)
 };
 
 // HEADROCK HAM 3.5: Added sector name

@@ -270,7 +270,7 @@ extern void InternalMAPBeginItemPointer( SOLDIERTYPE *pSoldier );
 #define BIVOUAC_PANEL_CELL_HEIGHT				24
 #define BIVOUAC_PANEL_COL_STEP					72
 #define BIVOUAC_PANEL_ROW_STEP					26
-#define BIVOUAC_PANEL_START_Y					(PLAYER_INFO_Y + 24)	// below the header, portrait area untouched
+#define BIVOUAC_PANEL_START_Y					(PLAYER_INFO_Y + 34)	// below the two-line header, portrait area untouched
 #define BIVOUAC_PANEL_END_Y						(INV_INTERFACE_START_Y - 4)
 #define BIVOUAC_PANEL_BTN_RESERVE				36		// bottom strip reserved for the Done button
 #define BIVOUAC_PANEL_BTN_WIDTH					70
@@ -7086,8 +7086,8 @@ void RenderBivouacPanel( void )
 
 	// header strip underline, separates the header from the grid
 	ColorFillVideoSurfaceArea( guiSAVEBUFFER,
-		sBX, (INT16)( PLAYER_INFO_Y + 22 ),
-		sBR, (INT16)( PLAYER_INFO_Y + 24 ),
+		sBX, (INT16)( PLAYER_INFO_Y + 32 ),
+		sBR, (INT16)( PLAYER_INFO_Y + 34 ),
 		usBivouacFrameLight );
 
 	// slot backgrounds (same graphic as the sector inventory slots)
@@ -7147,26 +7147,69 @@ void RenderBivouacPanel( void )
 		mprintf( sWidth, (INT16)( sY + 25 ), sString );
 	}
 
-	// header: squad letter + load percentage
+	// header line 1: squad title, line 2: current/max weight
 	INT32 iSquad = SQBM().GetActiveUISquadID( );
 
 	if( iSquad != -1 )
 	{
-		UINT32 uiCapacity = __max( 1, gGameExternalOptions.uiBivouacWeightCapacity );
-		UINT32 uiWeight = SQBM().GetTotalWeight( iSquad );
-		UINT32 uiPercent = (UINT32)( ( FLOAT )uiWeight / uiCapacity * 100.0f );
+		// SQUAD_BIVOUAC: while the panel is open the edits live in the local panel stash,
+		// the manager's slots are only updated on close - compute the current weight from
+		// pBivouacPanelList so the header reflects additions/removals immediately
+		UINT32 uiWeight = 0;
+		for( INT32 iSlot = 0; iSlot < BIVOUAC_NUM_SLOTS; ++iSlot )
+		{
+			uiWeight += CalculateObjectWeight( &( pBivouacPanelList[ iSlot ].object ) );
+		}
 
-		swprintf( sString, L"%c - %d%%", ( 'A' + iSquad ), uiPercent );
+		UINT32 uiCapacity = SQBM().GetWeightCapacity( iSquad );
 
 		INT16 sWidth, sHeight;
-		FindFontCenterCoordinates( PLAYER_INFO_X, 0, MAP_BORDER_X, 0,
-			sString, MAP_INVEN_NAME_FONT, &sWidth, &sHeight );
 
-		SetFont( MAP_INVEN_NAME_FONT );
-		SetFontForeground( SQBM().IsOverloaded( iSquad ) ? FONT_LTRED : FONT_YELLOW );
+		// SQUAD_BIVOUAC: draw into the panel surface (guiSAVEBUFFER) - the default
+		// FRAME_BUFFER destination gets overwritten by the save-buffer blit at frame end
+		// NOTE: fixed FONT10ARIAL - MAP_INVEN_NAME_FONT is the sector pool's zoom-dependent
+		// variable and changes between panel opens
+		SetFontDestBuffer( guiSAVEBUFFER, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, FALSE );
+
+		SetFont( FONT10ARIAL );
 		SetFontBackground( FONT_BLACK );
 
+		// line 1: "Бивуак отряда N" (squad number is 1-based for display) - white
+		swprintf( sString, gzLateLocalizedString[ 73 ], iSquad + 1 );
+		FindFontCenterCoordinates( PLAYER_INFO_X, 0, MAP_BORDER_X, 0,
+			sString, FONT10ARIAL, &sWidth, &sHeight );
+
+		SetFontForeground( FONT_WHITE );
 		mprintf( sWidth, (INT16)( PLAYER_INFO_Y + 4 ), sString );
+
+		// line 2: "prefix cur/max": the current weight number is drawn separately so it
+		// gets its own color (green normally, red when overloaded)
+		// weight in internal units (10ths of kg) -> display as kg with one decimal
+		// (prefix comes from the localized string - a Cyrillic literal here would be garbled
+		// because this source file's encoding differs from _RussianText.cpp)
+		CHAR16 sPrefix[ 64 ];
+		CHAR16 sCur[ 16 ];
+		CHAR16 sMax[ 16 ];
+		swprintf( sPrefix, gzLateLocalizedString[ 75 ] );
+		swprintf( sCur, L"%d.%d", uiWeight / 10, uiWeight % 10 );
+		swprintf( sMax, L"/%d.%d", uiCapacity / 10, uiCapacity % 10 );
+
+		UINT16 usPrefixW = StringPixLength( sPrefix, FONT10ARIAL );
+		UINT16 usCurW = StringPixLength( sCur, FONT10ARIAL );
+		UINT16 usMaxW = StringPixLength( sMax, FONT10ARIAL );
+		INT16 sTotalW = (INT16)( usPrefixW + usCurW + usMaxW );
+		INT16 sX0 = (INT16)( PLAYER_INFO_X + ( MAP_BORDER_X - sTotalW ) / 2 );
+
+		SetFontForeground( FONT_YELLOW );
+		mprintf( sX0, (INT16)( PLAYER_INFO_Y + 14 ), sPrefix );
+
+		SetFontForeground( ( uiWeight > uiCapacity ) ? FONT_LTRED : FONT_GREEN );
+		mprintf( (INT16)( sX0 + usPrefixW ), (INT16)( PLAYER_INFO_Y + 14 ), sCur );
+
+		SetFontForeground( FONT_YELLOW );
+		mprintf( (INT16)( sX0 + usPrefixW + usCurW ), (INT16)( PLAYER_INFO_Y + 14 ), sMax );
+
+		SetFontDestBuffer( FRAME_BUFFER, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, FALSE );
 	}
 
 	// fast help text for occupied slots

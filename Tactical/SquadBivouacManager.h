@@ -107,7 +107,25 @@ public:
 	// Total weight of all items inside the squad's bivouac (internal JA2 weight units).
 	UINT32	GetTotalWeight( INT32 iSquadID );
 
-	// Overload ratio: GetTotalWeight / BIVOUAC_WEIGHT_CAPACITY, clamped to >= 1.0.
+	// Total weight capacity of this squad's bivouac:
+	//   BIVOUAC_WEIGHT_CAPACITY (config base) + sum of the free (spare) carrying
+	//   capacity of every live merc in the squad.
+	// Free capacity of one merc = strength-based max carry weight - currently carried weight.
+	// Calculated on demand, so it always reflects the current squad composition and equipment.
+	UINT32	GetWeightCapacity( INT32 iSquadID );
+
+	// Sum of the strength-based maximum carry weight over all live mercs of the squad.
+	// (Informational: free capacity = this - currently carried weight.)
+	UINT32	GetMercsMaxCarryWeight( INT32 iSquadID );
+
+	// Sum of the weight currently carried by all live mercs of the squad.
+	UINT32	GetMercsCarriedWeight( INT32 iSquadID );
+
+	// Sum of the free (spare) carrying capacity of all live mercs of the squad
+	// (never negative for a single merc: an overloaded merc just contributes 0).
+	UINT32	GetMercsFreeWeight( INT32 iSquadID );
+
+	// Overload ratio: GetTotalWeight / GetWeightCapacity, clamped to >= 1.0.
 	// 1.0 = within capacity, >1.0 = overloaded by that factor.
 	FLOAT	GetOverloadRatio( INT32 iSquadID );
 
@@ -195,6 +213,7 @@ private:
 	INT32	SquadToDataIndex( INT32 iSquadID ) const;		// validate & map id -> array index
 	UINT16	CountLiveMercsInSquad( INT32 iSquadID ) const;
 	BOOLEAN	IsSectorPeacefulAndOurs( INT32 iSquadID ) const;
+	UINT32	GetMercMaxCarryWeight( SOLDIERTYPE* pSoldier ) const;	// strength-based max carry weight of one merc
 
 	// storage: one data block per squad (NUMBER_OF_SQUADS defined in Squads.h)
 	BivouacData		m_Bivouac[ NUMBER_OF_SQUADS ];

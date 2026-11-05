@@ -26,6 +26,9 @@
 	#include "Assignments.h"			// ON_DUTY, NUMBER_OF_SQUADS related enums
 	#include "Game Clock.h"				// PauseGame(), LockPauseState()
 	#include "Map Screen Interface Map.h"	// bSelectedInfoChar, gCharactersList
+	#include "SkillCheck.h"				// EffectiveStrength()
+	#include "Soldier Control.h"		// HAS_SKILL_TRAIT, GetBackgroundValue
+	#include "interface.h"				// BG_PERC_CARRYSTRENGTH
 #endif
 
 #include "SquadBivouacManager.h"
@@ -321,9 +324,118 @@ UINT32 SquadBivouacManager::GetTotalWeight( INT32 iSquadID )
 	return( uiTotalWeight );
 }
 
+// strength-based max carry weight of one merc, in internal weight units (10ths of kg).
+// Reproduces the inverse of CalculateCarriedWeight() at the 100% threshold:
+//   100% <= (20 * iStrengthToLiftHalfKilo * weight) / strength
+//     =>  maxWeight = (5 * strength) / iStrengthToLiftHalfKilo
+// Includes the same modifiers: strength >80 bonus, Bodybuilding trait, carry background.
+UINT32 SquadBivouacManager::GetMercMaxCarryWeight( SOLDIERTYPE* pSoldier ) const
+{
+	if ( pSoldier == NULL || !pSoldier->bActive || pSoldier->stats.bLife <= 0 )
+	{
+		return( 0 );
+	}
+
+	UINT32 ubStrengthForCarrying = EffectiveStrength( pSoldier, FALSE );
+	if ( ubStrengthForCarrying > 80 )
+	{
+		ubStrengthForCarrying += (ubStrengthForCarrying - 80);
+	}
+
+	// SANDRO - STOMP traits - Bodybuilding carry weight bonus
+	if ( gGameOptions.fNewTraitSystem && HAS_SKILL_TRAIT( pSoldier, BODYBUILDING_NT ) )
+	{
+		ubStrengthForCarrying = (ubStrengthForCarrying * (100 + gSkillTraitValues.ubBBCarryWeightBonus) / 100);
+	}
+
+	ubStrengthForCarrying = (ubStrengthForCarrying * (100 + pSoldier->GetBackgroundValue(BG_PERC_CARRYSTRENGTH)) / 100);
+
+	FLOAT fKiloFactor = (FLOAT)gGameExternalOptions.iStrengthToLiftHalfKilo;
+	if ( fKiloFactor < 0.1f )
+	{
+		fKiloFactor = 0.1f;
+	}
+
+	// max weight (in 10ths of kg) at which carried percent reaches 100
+	return( (UINT32)( ( 5.0f * (FLOAT)ubStrengthForCarrying ) / fKiloFactor ) );
+}
+
+UINT32 SquadBivouacManager::GetMercsMaxCarryWeight( INT32 iSquadID )
+{
+	if ( iSquadID < 0 || iSquadID >= NUMBER_OF_SQUADS )
+	{
+		return( 0 );
+	}
+
+	UINT32 uiTotal = 0;
+	for ( INT32 iSlot = 0; iSlot < NUMBER_OF_SOLDIERS_PER_SQUAD; ++iSlot )
+	{
+		uiTotal += GetMercMaxCarryWeight( Squad[iSquadID][iSlot] );
+	}
+
+	return( uiTotal );
+}
+
+UINT32 SquadBivouacManager::GetMercsCarriedWeight( INT32 iSquadID )
+{
+	if ( iSquadID < 0 || iSquadID >= NUMBER_OF_SQUADS )
+	{
+		return( 0 );
+	}
+
+	UINT32 uiTotal = 0;
+	for ( INT32 iSlot = 0; iSlot < NUMBER_OF_SOLDIERS_PER_SQUAD; ++iSlot )
+	{
+		SOLDIERTYPE* pSoldier = Squad[iSquadID][iSlot];
+		if ( pSoldier != NULL && pSoldier->bActive && pSoldier->stats.bLife > 0 )
+		{
+			// plain inventory weight (no dragging): what the merc carries right now
+			// (::GetTotalWeight - the global function from Items.cpp, not the manager's method)
+			uiTotal += ::GetTotalWeight( pSoldier );
+		}
+	}
+
+	return( uiTotal );
+}
+
+UINT32 SquadBivouacManager::GetMercsFreeWeight( INT32 iSquadID )
+{
+	if ( iSquadID < 0 || iSquadID >= NUMBER_OF_SQUADS )
+	{
+		return( 0 );
+	}
+
+	UINT32 uiFree = 0;
+	for ( INT32 iSlot = 0; iSlot < NUMBER_OF_SOLDIERS_PER_SQUAD; ++iSlot )
+	{
+		SOLDIERTYPE* pSoldier = Squad[iSquadID][iSlot];
+		if ( pSoldier == NULL || !pSoldier->bActive || pSoldier->stats.bLife <= 0 )
+		{
+			continue;
+		}
+
+		UINT32 uiMax = GetMercMaxCarryWeight( pSoldier );
+		UINT32 uiCarried = ::GetTotalWeight( pSoldier );
+
+		// an overloaded merc simply contributes nothing, never a negative amount
+		uiFree += ( uiMax > uiCarried ) ? ( uiMax - uiCarried ) : 0;
+	}
+
+	return( uiFree );
+}
+
+// Bivouac weight capacity: config base + free carrying capacity of the squad's mercs.
+// Calculated on demand -> automatically reflects squad composition / equipment changes.
+UINT32 SquadBivouacManager::GetWeightCapacity( INT32 iSquadID )
+{
+	UINT32 uiBase = (UINT32)__max( 1, gGameExternalOptions.uiBivouacWeightCapacity );
+
+	return( uiBase + GetMercsFreeWeight( iSquadID ) );
+}
+
 FLOAT SquadBivouacManager::GetOverloadRatio( INT32 iSquadID )
 {
-	UINT32 uiCapacity = (UINT32)__max( 1, gGameExternalOptions.uiBivouacWeightCapacity );
+	UINT32 uiCapacity = GetWeightCapacity( iSquadID );
 
 	UINT32 uiWeight = GetTotalWeight( iSquadID );
 
@@ -339,7 +451,7 @@ FLOAT SquadBivouacManager::GetOverloadRatio( INT32 iSquadID )
 
 BOOLEAN SquadBivouacManager::IsOverloaded( INT32 iSquadID )
 {
-	return( GetTotalWeight( iSquadID ) > (UINT32)__max( 1, gGameExternalOptions.uiBivouacWeightCapacity ) );
+	return( GetTotalWeight( iSquadID ) > GetWeightCapacity( iSquadID ) );
 }
 
 INT32 SquadBivouacManager::GetOverloadBreathDrain( INT32 iSquadID )
@@ -350,7 +462,7 @@ INT32 SquadBivouacManager::GetOverloadBreathDrain( INT32 iSquadID )
 		return( 0 );
 	}
 
-	UINT32 uiCapacity = (UINT32)__max( 1, gGameExternalOptions.uiBivouacWeightCapacity );
+	UINT32 uiCapacity = GetWeightCapacity( iSquadID );
 	UINT32 uiWeight = GetTotalWeight( iSquadID );
 
 	// overload percent above capacity: 100% = exactly at capacity, 200% = twice the capacity

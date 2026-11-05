@@ -6903,6 +6903,9 @@ STR16 gzLateLocalizedString[] =
 	L"Item moved to the squad's bivouac.",	// 70
 	L"Item moved to the sector inventory.",	// 71
 	L"The squad's bivouac is full.",	// 72
+	L"Squad %d bivouac",	// 73 SQUAD_BIVOUAC panel header: squad title (squad number)
+	L"Weight current/max %d.%d/%d.%d",	// 74 SQUAD_BIVOUAC panel header: current/max weight (kg, one decimal)
+	L"Weight current/max ",	// 75 SQUAD_BIVOUAC panel header: weight line prefix (no formatting)
 };
 
 // HEADROCK HAM 3.5: Added sector name
