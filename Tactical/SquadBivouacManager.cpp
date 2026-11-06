@@ -27,6 +27,9 @@
 	#include "Game Clock.h"				// PauseGame(), LockPauseState()
 	#include "Map Screen Interface Map.h"	// bSelectedInfoChar, gCharactersList
 	#include "Map Screen Interface Map Inventory.h"	// fShowMapInventoryPool, pInventoryPoolList
+
+// SQUAD_BIVOUAC: bivouac panel stash lives in Map Screen Interface Map Inventory.cpp
+// (extern declarations are placed at the dump site, near their only use)
 	#include "Map Screen Interface.h"	// sSelMapX/sSelMapY, iCurrentMapSectorZ
 	#include "SkillCheck.h"				// EffectiveStrength()
 	#include "Soldier Control.h"		// HAS_SKILL_TRAIT, GetBackgroundValue
@@ -281,16 +284,24 @@ void SquadBivouacManager::DumpToFloor( INT32 iSquadID, INT16 sMapX, INT16 sMapY,
 
 	// panel currently shows THIS squad's bivouac: it holds the working copy of the slots
 	// (slots are only synced back on close), so sync it in first - otherwise items the
-	// player just dropped into the panel would not be part of the dump
+	// player just dropped into the panel would not be part of the dump.
+	// NOTE: the panel stash is pBivouacPanelList (Map Screen Interface Map Inventory.cpp).
+	// pInventoryPoolList belongs to the fullscreen SECTOR inventory and has nothing to do
+	// with the bivouac - storing from it would clobber the squad slots with sector items.
 	BOOLEAN fPanelShowsThisBivouac = ( fBivouacUIActive && m_iActiveUISquad == iSquadID );
 	if ( fPanelShowsThisBivouac )
 	{
-		StoreBivouacStash( pInventoryPoolList );
+		extern std::vector<WORLDITEM> pBivouacPanelList;
+		StoreBivouacStash( pBivouacPanelList );
 	}
 
 	BOOLEAN fSectorInventoryShadowsDumpSector = FALSE;
-	if ( !fBivouacUIActive &&
-		 fShowMapInventoryPool &&
+	// NOTE: no !fBivouacUIActive here - the bivouac panel has its own stash
+	// (pBivouacPanelList), so pInventoryPoolList still holds the real sector items even
+	// while the bivouac panel is open. If the fullscreen sector inventory is open for the
+	// dump sector, its snapshot shadows the world storage (closing it would overwrite the
+	// storage WITHOUT the dumped items), so the dump must go into the snapshot.
+	if ( fShowMapInventoryPool &&
 		 sSelMapX == sMapX && sSelMapY == sMapY && iCurrentMapSectorZ == bMapZ )
 	{
 		fSectorInventoryShadowsDumpSector = TRUE;
@@ -390,6 +401,15 @@ void SquadBivouacManager::DumpToFloor( INT32 iSquadID, INT16 sMapX, INT16 sMapY,
 			fMapPanelDirty = TRUE;
 		}
 
+		// SQUAD_BIVOUAC: the bivouac panel (if open for this squad) still holds the
+		// pre-dump working copy in its stash - refresh it to the now-empty slots,
+		// otherwise closing the bivouac panel would write the dumped items back in
+		if ( fPanelShowsThisBivouac )
+		{
+			extern std::vector<WORLDITEM> pBivouacPanelList;
+			BuildBivouacStash( pBivouacPanelList );
+		}
+
 		return;
 	}
 
@@ -475,10 +495,8 @@ void SquadBivouacManager::DumpToFloor( INT32 iSquadID, INT16 sMapX, INT16 sMapY,
 	// just-dumped items back into the bivouac.
 	if ( fPanelShowsThisBivouac )
 	{
-		BuildBivouacStash( pInventoryPoolList );
-
-		// keep the snapshot lists the same size (RefreshSeenAndUnseenPools indexes both blindly)
-		pUnSeenItems.resize( pInventoryPoolList.size( ) );
+		extern std::vector<WORLDITEM> pBivouacPanelList;
+		BuildBivouacStash( pBivouacPanelList );
 	}
 }
 
@@ -648,9 +666,9 @@ INT32 SquadBivouacManager::GetOverloadBreathDrain( INT32 iSquadID )
 	// overload percent above capacity: 100% = exactly at capacity, 200% = twice the capacity
 	INT32 iOverloadPercent = (INT32)( ( 100 * (INT64)uiWeight ) / (INT64)uiCapacity );	// 100..N
 
-	// dynamic drain: overload% * multiplier / 100.
+	// dynamic drain: overload% * breath multiplier / 100.
 	// E.g. 200% overload with multiplier 15 => 30 breath points per minute (scaled by caller).
-	INT32 iDrain = ( iOverloadPercent * gGameExternalOptions.usBivouacMovementPenaltyMultiplier ) / 100;
+	INT32 iDrain = ( iOverloadPercent * gGameExternalOptions.usBivouacBreathPenaltyMultiplier ) / 100;
 
 	return( __max( 0, iDrain ) );
 }
@@ -734,6 +752,20 @@ BOOLEAN SquadBivouacManager::TakePendingAssignmentChange( UINT16& usSoldierID, I
 	iParam3		= m_PendingAssignChange.iParam3;
 
 	return( TRUE );
+}
+
+BOOLEAN SquadBivouacManager::CanSquadMoveWithBivouac( INT32 iSquadID )
+{
+	// empty bivouac: no restriction beyond normal game rules
+	if ( IsEmpty( iSquadID ) )
+	{
+		return( TRUE );
+	}
+
+	// non-empty bivouac needs enough live mercs to carry it
+	UINT16 usMinMercs = (UINT16)__max( 1, gGameExternalOptions.usBivouacMoveMinMercs );
+
+	return( CountLiveMercsInSquad( iSquadID ) >= usMinMercs );
 }
 
 BOOLEAN SquadBivouacManager::HandleLastMercLeavingSquad( INT32 iSquadID, SOLDIERTYPE* pLastSoldier )

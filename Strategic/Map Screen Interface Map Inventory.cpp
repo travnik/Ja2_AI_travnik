@@ -287,12 +287,17 @@ static UINT32 guiBivouacPanelBackground = 0;
 MOUSE_REGION BivouacPanelSlots[ BIVOUAC_NUM_SLOTS ];
 UINT32 guiBivouacPanelDoneButtonImage = 0;
 UINT32 guiBivouacPanelDoneButton = 0;
+UINT32 guiBivouacPanelDropAllButtonImage = 0;
+UINT32 guiBivouacPanelDropAllButton = 0;
 static BOOLEAN gfBivouacPanelCreated = FALSE;
 
 // SQUAD_BIVOUAC: dedicated stash for the panel. Deliberately separate from pInventoryPoolList
 // so the bivouac panel and the fullscreen sector inventory can be open at the same time
 // without clobbering each other's contents.
-static std::vector<WORLDITEM> pBivouacPanelList;
+// NON-static: SquadBivouacManager::DumpToFloor syncs the panel edits into the squad slots
+// through this vector (pInventoryPoolList belongs to the SECTOR inventory and must never
+// be used for the bivouac).
+std::vector<WORLDITEM> pBivouacPanelList;
 
 // SQUAD_BIVOUAC: TRUE if the slot is disabled (not configured to a pocket template)
 static BOOLEAN BivouacSlotDisabled( INT32 iSlot )
@@ -448,6 +453,10 @@ void SortSectorInventory( std::vector<WORLDITEM>& pInventory, UINT32 uiSizeOfArr
 BOOLEAN CanPlayerUseSectorInventory( SOLDIERTYPE *pSelectedSoldier );
 
 extern void MAPEndItemPointer( );
+
+// SQUAD_BIVOUAC: dedicated stash of the bivouac panel (defined below, non-static:
+// SquadBivouacManager::DumpToFloor reads it to sync panel edits before a dump)
+extern std::vector<WORLDITEM> pBivouacPanelList;
 extern	BOOLEAN GetCurrentBattleSectorXYZAndReturnTRUEIfThereIsABattle( INT16 *psSectorX, INT16 *psSectorY, INT16 *psSectorZ );
 extern BOOLEAN MAPInternalInitItemDescriptionBox( OBJECTTYPE *pObject, UINT8 ubStatusIndex, SOLDIERTYPE *pSoldier );
 
@@ -463,6 +472,7 @@ static void BivouacPanelDestroySlots( void );
 static void BivouacPanelSlotsCallback( MOUSE_REGION *pRegion, INT32 iReason );
 static void BivouacPanelSlotsMoveCallback( MOUSE_REGION *pRegion, INT32 iReason );
 static void BivouacPanelDoneBtn( GUI_BUTTON *btn, INT32 reason );
+static void BivouacPanelDropAllBtn( GUI_BUTTON *btn, INT32 reason );
 
 #ifdef INVFIX_Moa//dnl ch85 050214
 void DeleteAllItemsInInventoryPool();
@@ -6863,6 +6873,16 @@ static void BivouacPanelCreateSlots( void )
 		(GUI_CALLBACK)BtnGenericMouseMoveButtonCallback, (GUI_CALLBACK)BivouacPanelDoneBtn );
 
 	SetButtonFastHelpText( guiBivouacPanelDoneButton, pMapScreenInvenButtonHelpText[ 2 ] );
+
+	// SQUAD_BIVOUAC: "drop all" button, left of the Done button.
+	// Reuses the sector inventory's stack-and-merge icon (arrows merging into one slot).
+	guiBivouacPanelDropAllButtonImage = LoadButtonImage( "INTERFACE\\sector_inventory_buttons.sti", 16, 14, -1, 15, -1 );
+	guiBivouacPanelDropAllButton = QuickCreateButton( guiBivouacPanelDropAllButtonImage,
+		(INT16)( PLAYER_INFO_X + ( MAP_BORDER_X - BIVOUAC_PANEL_BTN_WIDTH ) / 2 - 34 ), (INT16)( BIVOUAC_PANEL_END_Y - 28 ),
+		BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
+		(GUI_CALLBACK)BtnGenericMouseMoveButtonCallback, (GUI_CALLBACK)BivouacPanelDropAllBtn );
+
+	SetButtonFastHelpText( guiBivouacPanelDropAllButton, gzLateLocalizedString[ 81 ] );
 }
 
 static void BivouacPanelDestroySlots( void )
@@ -6888,6 +6908,15 @@ static void BivouacPanelDestroySlots( void )
 		UnloadButtonImage( guiBivouacPanelDoneButtonImage );
 		guiBivouacPanelDoneButton = 0;
 		guiBivouacPanelDoneButtonImage = 0;
+	}
+
+	// SQUAD_BIVOUAC: remove the drop-all button
+	if( guiBivouacPanelDropAllButton )
+	{
+		RemoveButton( guiBivouacPanelDropAllButton );
+		UnloadButtonImage( guiBivouacPanelDropAllButtonImage );
+		guiBivouacPanelDropAllButton = 0;
+		guiBivouacPanelDropAllButtonImage = 0;
 	}
 }
 
@@ -7731,6 +7760,47 @@ static void BivouacPanelDoneBtn( GUI_BUTTON *btn, INT32 reason )
 			else
 			{
 				CloseBivouacPanel( TRUE );
+			}
+		}
+	}
+}
+
+// SQUAD_BIVOUAC: "drop all" button - dump the whole bivouac into the sector.
+// The panel stash is synced back into the squad slots first, then DumpToFloor handles
+// every placement case (loaded sector / sector inventory open / unloaded sector) and
+// rebuilds the panel stash empty afterwards.
+static void BivouacPanelDropAllBtn( GUI_BUTTON *btn, INT32 reason )
+{
+	if( reason & MSYS_CALLBACK_REASON_LBUTTON_DWN )
+	{
+		btn->uiFlags |= ( BUTTON_CLICKED_ON );
+	}
+	else if( reason & MSYS_CALLBACK_REASON_LBUTTON_UP )
+	{
+		if( btn->uiFlags & BUTTON_CLICKED_ON )
+		{
+			btn->uiFlags &= ~( BUTTON_CLICKED_ON );
+
+			INT32 iSquadID = SQBM().GetActiveUISquadID( );
+
+			if( iSquadID == -1 || gfInItemDescBox )
+			{
+				return;
+			}
+
+			INT16 sX = -1, sY = -1;
+			INT16 bZ = 0;
+
+			if( SectorSquadIsIn( (INT8)iSquadID, &sX, &sY, &bZ ) )
+			{
+				// gridno -1 => random spot / entry point, resolved inside DumpToFloor
+				SQBM().DumpToFloor( iSquadID, sX, sY, bZ, -1 );
+
+				ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, gzLateLocalizedString[ 68 ] );
+
+				// panel is showing an empty bivouac now - repaint it
+				fMapPanelDirty = TRUE;
+				fInterfacePanelDirty = DIRTYLEVEL2;
 			}
 		}
 	}

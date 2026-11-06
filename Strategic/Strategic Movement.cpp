@@ -542,6 +542,27 @@ BOOLEAN AddWaypointToPGroup( GROUP* pGroup, UINT8 ubSectorX, UINT8 ubSectorY ) /
 	if( !pGroup )
 		return FALSE;
 
+	// SQUAD_BIVOUAC: a squad with a NON-EMPTY bivouac needs enough live mercs to carry it.
+	// Block the FIRST waypoint of a player movement group (the one that initiates moving
+	// out of a sector); waypoints added while already traveling are unaffected, and the
+	// group can still arrive normally once it is between sectors.
+	if( pGroup->fPlayer && !pGroup->fBetweenSectors && !pGroup->pWaypoints )
+	{
+		for( INT32 iSquad = 0; iSquad < NUMBER_OF_SQUADS; ++iSquad )
+		{
+			if( SquadMovementGroups[ iSquad ] == pGroup->ubGroupID )
+			{
+				if( SQBM().CanSquadMoveWithBivouac( iSquad ) == FALSE )
+				{
+					ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, gzLateLocalizedString[ 80 ],
+						gGameExternalOptions.usBivouacMoveMinMercs );
+					return( FALSE );
+				}
+				break;
+			}
+		}
+	}
+
 	//At this point, we have the group, and a valid coordinate.	Now we must
 	//determine that this waypoint will be aligned exclusively to either the x or y axis of
 	//the last waypoint in the list.

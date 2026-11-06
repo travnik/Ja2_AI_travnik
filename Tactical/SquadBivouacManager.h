@@ -164,7 +164,7 @@ public:
 
 	// Additional per-minute breath drain for a marching merc of this squad.
 	// Scales dynamically with the overload percentage:
-	//   drain = overloadPercent * BIVOUAC_MOVEMENT_PENALTY_MULTIPLIER / 100
+	//   drain = overloadPercent * BIVOUAC_BREATH_PENALTY_MULTIPLIER / 100
 	// Returns 0 for non-overloaded squads / invalid params.
 	INT32	GetOverloadBreathDrain( INT32 iSquadID );
 
@@ -172,6 +172,11 @@ public:
 	//   uiTime * (1 + (ratio-1) * BIVOUAC_MOVEMENT_PENALTY_MULTIPLIER / 100)
 	// Used as a one-line hook inside GetSectorMovementTime()/GetSectorMvtTimeForGroup().
 	UINT32	ApplyMovementTimePenalty( UINT32 uiBaseTime, INT32 iSquadID );
+
+	// TRUE if the squad may move between sectors with its current bivouac:
+	// an empty bivouac is always allowed; a non-empty one requires
+	// gGameExternalOptions.usBivouacMoveMinMercs live mercs in the squad.
+	BOOLEAN	CanSquadMoveWithBivouac( INT32 iSquadID );
 
 	////////////////////////////////////////////////////////////////////////////////////////////
 	// Disband interception

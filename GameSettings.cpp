@@ -2410,6 +2410,9 @@ void LoadGameExternalOptions()
 	gGameExternalOptions.usBivouacMinMercsRequired = (UINT16)iniReader.ReadInteger("Extended Options", "BIVOUAC_MIN_MERCS_REQUIRED", 1, 1, 20);
 	gGameExternalOptions.uiBivouacWeightCapacity = (UINT32)iniReader.ReadInteger("Extended Options", "BIVOUAC_WEIGHT_CAPACITY", 1000, 1, 1000000);
 	gGameExternalOptions.usBivouacMovementPenaltyMultiplier = (UINT16)iniReader.ReadInteger("Extended Options", "BIVOUAC_MOVEMENT_PENALTY_MULTIPLIER", 15, 0, 1000);
+	gGameExternalOptions.usBivouacBreathPenaltyMultiplier = (UINT16)iniReader.ReadInteger("Extended Options", "BIVOUAC_BREATH_PENALTY_MULTIPLIER", 15, 0, 1000);
+	// SQUAD_BIVOUAC: minimal live mercs for a squad with a non-empty bivouac to move between sectors
+	gGameExternalOptions.usBivouacMoveMinMercs = (UINT16)iniReader.ReadInteger("Extended Options", "BIVOUAC_MOVE_MIN_MERCS", 2, 1, 20);
 	// SQUAD_BIVOUAC: default pocket template (Pockets.xml pIndex) for slots missing from BivouacSlots.xml
 	gGameExternalOptions.usBivouacSlotDefaultPocket = (UINT16)iniReader.ReadInteger("Extended Options", "BIVOUAC_SLOT_DEFAULT_POCKET", 255, 0, 255);
 }

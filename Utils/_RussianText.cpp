@@ -6907,6 +6907,8 @@ STR16 gzLateLocalizedString[] =
 	L"Этот слот бивуака не принимает предметы такого типа.",	// 77 SQUAD_BIVOUAC: wrong item class (pocket restriction)
 	L"«%s»: габарит %d, вместимость слота %d.",	// 78 SQUAD_BIVOUAC: item does not fit slot capacity (name, item size, ItemCapacityPerSize)
 	L"«%s»: не помещается в слот (в слоте %d, вместимость %d).",	// 79 SQUAD_BIVOUAC: stack overflow (name, current stack count, capacity)
+	L"В бивуаке отряда остались предметы: для перемещения нужно минимум %d бойцов в отряде.",	// 80 SQUAD_BIVOUAC: squad with non-empty bivouac blocked from moving (min mercs)
+	L"Выгрузить всё содержимое бивуака в сектор.",	// 81 SQUAD_BIVOUAC: drop-all button tooltip
 };
 
 // HEADROCK HAM 3.5: Added sector name

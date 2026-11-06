@@ -1556,7 +1556,9 @@ typedef struct
 	// SQUAD_BIVOUAC: squad bivouac inventory settings
 	UINT16	usBivouacMinMercsRequired;			// minimal number of live mercs in squad to access the bivouac
 	UINT32	uiBivouacWeightCapacity;			// bivouac total weight capacity (internal JA2 weight units)
-	UINT16	usBivouacMovementPenaltyMultiplier;	// overload penalty scale: travel time % and breath drain per overload percent
+	UINT16	usBivouacMovementPenaltyMultiplier;	// overload travel-time penalty scale: +% per (ratio-1)
+	UINT16	usBivouacBreathPenaltyMultiplier;	// overload breath drain scale: +points per overload percent
+	UINT16	usBivouacMoveMinMercs;				// minimal live mercs in a squad with a non-empty bivouac to move between sectors
 	UINT16	usBivouacSlotDefaultPocket;			// SQUAD_BIVOUAC: default pocket template index (Pockets.xml pIndex) for slots missing from BivouacSlots.xml, 255 = slot disabled
 
 } GAME_EXTERNAL_OPTIONS;
