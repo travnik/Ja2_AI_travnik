@@ -130,6 +130,12 @@ public:
 	// sGridNo == -1 means "use random gridno / entry point" (unloaded sector case).
 	void	DumpToFloor( INT32 iSquadID, INT16 sMapX, INT16 sMapY, INT8 bMapZ, INT32 sGridNo );
 
+	// SQUAD_BIVOUAC: automatic silent dump used when a squad loses its last member
+	// (dismissal / contract expiry / death). Dumps the bivouac into the squad's sector
+	// (loaded or unloaded) and shows the standard [68] message. Does nothing for an
+	// empty bivouac or a squad that is between sectors (no meaningful drop location).
+	void	AutoDumpBivouacOnSquadLoss( INT32 iSquadID );
+
 	////////////////////////////////////////////////////////////////////////////////////////////
 	// Balance / penalties
 	////////////////////////////////////////////////////////////////////////////////////////////

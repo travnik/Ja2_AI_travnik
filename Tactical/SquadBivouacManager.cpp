@@ -500,6 +500,60 @@ void SquadBivouacManager::DumpToFloor( INT32 iSquadID, INT16 sMapX, INT16 sMapY,
 	}
 }
 
+// SQUAD_BIVOUAC: automatic dump when a squad loses its last member (dismissal, contract
+// expiry, death of the last merc). The items must stay in the sector - not vanish with
+// the squad. Sector is taken from the squad's current location; a squad between sectors
+// has no meaningful drop location, so the bivouac keeps its items in that edge case.
+void SquadBivouacManager::AutoDumpBivouacOnSquadLoss( INT32 iSquadID )
+{
+	if ( iSquadID < 0 || iSquadID >= NUMBER_OF_SQUADS )
+	{
+		return;
+	}
+
+	// nothing to dump
+	if ( IsEmpty( iSquadID ) )
+	{
+		return;
+	}
+
+	// squad in transit: no sector to drop into, items stay in the (now hidden) bivouac
+	SOLDIERTYPE* pFirst = Squad[ iSquadID ][ 0 ];
+	// squad may already be empty - find any remaining member for between-sector state
+	if ( pFirst == NULL )
+	{
+		for ( INT32 iSlot = 1; iSlot < NUMBER_OF_SOLDIERS_PER_SQUAD; ++iSlot )
+		{
+			if ( Squad[ iSquadID ][ iSlot ] != NULL )
+			{
+				pFirst = Squad[ iSquadID ][ iSlot ];
+				break;
+			}
+		}
+	}
+
+	INT16 sX = -1, sY = -1;
+	INT16 bZ = 0;
+
+	// the squad pointer array may already be empty here (removal ran before this call) -
+	// fall back to the leaving merc's own sector coordinates passed indirectly is not
+	// possible, so use SectorSquadIsIn which works while the squad array still holds
+	// the (dead) member. If it fails, keep the items.
+	if ( !SectorSquadIsIn( (INT8)iSquadID, &sX, &sY, &bZ ) )
+	{
+		return;
+	}
+
+	if ( pFirst != NULL && pFirst->flags.fBetweenSectors )
+	{
+		return;
+	}
+
+	DumpToFloor( iSquadID, sX, sY, bZ, -1 );
+
+	ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, gzLateLocalizedString[68] );	// "The squad's bivouac has been emptied into the sector."
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Balance / penalties
 ////////////////////////////////////////////////////////////////////////////////////////////////////
