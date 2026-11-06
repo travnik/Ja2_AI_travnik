@@ -296,7 +296,7 @@ static std::vector<WORLDITEM> pBivouacPanelList;
 
 // SQUAD_BIVOUAC: place the whole cursor stack into the bivouac panel stash.
 // Returns TRUE when the cursor is empty afterwards (everything fit); FALSE when the
-// bivouac is full and (part of) the item is still on the cursor
+// bivouac is full / no slot accepts the item and (part of) the item is still on the cursor
 static BOOLEAN BivouacTryPlaceCursorItem( void )
 {
 	if( gpItemPointer == NULL || gpItemPointer->exists( ) == false )
@@ -309,46 +309,60 @@ static BOOLEAN BivouacTryPlaceCursorItem( void )
 		return( FALSE );
 	}
 
-	// same item: stack into the first matching slot (money merges internally)
+	// same item: stack into the first matching slot (money merges internally).
+	// The live slot content comes from the panel stash - the manager storage does not
+	// know about panel edits until the panel closes.
 	for( INT32 iSlot = 0; iSlot < BIVOUAC_NUM_SLOTS; ++iSlot )
 	{
 		WORLDITEM& wi = pBivouacPanelList[ iSlot ];
 
 		if( wi.object.exists( ) && wi.object.usItem == gpItemPointer->usItem )
 		{
-			wi.object.AddObjectsToStack( *gpItemPointer, ALL_OBJECTS, NULL, STACK_SIZE_LIMIT );
-			wi.fExists = TRUE;
-			wi.bVisible = 1;
-			wi.usFlags |= WORLD_ITEM_REACHABLE;
+			int iReason = SQBM().CanItemFitInBivouacSlot( (UINT8)iSlot, gpItemPointer,
+				(UINT8)gpItemPointer->ubNumberOfObjects, &( wi.object ) );
 
-			if( gpItemPointer->exists( ) == false )
+			if( iReason == BIVOUAC_FIT_OK )
 			{
-				return( TRUE );
+				wi.object.AddObjectsToStack( *gpItemPointer, ALL_OBJECTS, NULL, STACK_SIZE_LIMIT );
+				wi.fExists = TRUE;
+				wi.bVisible = 1;
+				wi.usFlags |= WORLD_ITEM_REACHABLE;
+
+				if( gpItemPointer->exists( ) == false )
+				{
+					return( TRUE );
+				}
 			}
 		}
 	}
 
-	// no stack partner (or leftover): free slots
+	// no stack partner (or leftover): free slots that accept the item
 	for( INT32 iSlot = 0; iSlot < BIVOUAC_NUM_SLOTS; ++iSlot )
 	{
 		WORLDITEM& wi = pBivouacPanelList[ iSlot ];
 
 		if( wi.object.exists( ) == false )
 		{
-			gpItemPointer->MoveThisObjectTo( wi.object );
-			wi.fExists = TRUE;
-			wi.bVisible = 1;
-			wi.sGridNo = -1;
-			wi.usFlags = WORLD_ITEM_REACHABLE;
+			int iReason = SQBM().CanItemFitInBivouacSlot( (UINT8)iSlot, gpItemPointer,
+				(UINT8)gpItemPointer->ubNumberOfObjects, NULL );
 
-			if( gpItemPointer->exists( ) == false )
+			if( iReason == BIVOUAC_FIT_OK )
 			{
-				return( TRUE );
+				gpItemPointer->MoveThisObjectTo( wi.object );
+				wi.fExists = TRUE;
+				wi.bVisible = 1;
+				wi.sGridNo = -1;
+				wi.usFlags = WORLD_ITEM_REACHABLE;
+
+				if( gpItemPointer->exists( ) == false )
+				{
+					return( TRUE );
+				}
 			}
 		}
 	}
 
-	// bivouac full, item (or remainder) still on the cursor
+	// no accepting slot (full / rules), item (or remainder) still on the cursor
 	return( FALSE );
 }
 
@@ -7099,6 +7113,54 @@ void RenderBivouacPanel( void )
 		BltVideoObject( guiSAVEBUFFER, hHandle, 0, sX, sY, VO_BLT_SRCTRANSPARENCY, NULL );
 	}
 
+	// SQUAD_BIVOUAC: NIV pocket silhouettes for empty slots.
+	// The silhouette index is read from the slot's pocket template (LBEPocketType),
+	// exactly like INVRenderSilhouette() does for merc pockets.
+	HVOBJECT hSilhouette;
+	GetVideoObject( &hSilhouette, guiSILHOUETTE );
+
+	for( INT32 iCounter = 0; iCounter < BIVOUAC_NUM_SLOTS; ++iCounter )
+	{
+		WORLDITEM *pWI = &( pBivouacPanelList[ iCounter ] );
+
+		if( pWI->object.exists( ) == true )
+		{
+			continue;
+		}
+
+		BivouacSlotConfig config = SQBM().GetSlotConfig( iCounter );
+
+		// unconfigured slot: no silhouette
+		if( config.pPocketIndex == BIVOUAC_SLOT_POCKET_NONE )
+		{
+			continue;
+		}
+
+		// the referenced pocket template must exist in the loaded Pockets.xml data
+		if( config.pPocketIndex >= LBEPocketType.size( ) )
+		{
+			continue;
+		}
+
+		UINT8 ubSilhouetteID = LBEPocketType[ config.pPocketIndex ].pSilhouette;
+
+		// silhouette index must exist in the Silhouettes.sti image collection
+		if( ubSilhouetteID >= hSilhouette->usNumberOfObjects )
+		{
+			continue;
+		}
+
+		BivouacPanelGetSlotCoords( iCounter, &sX, &sY );
+
+		ETRLEObject *pTrav = &( hSilhouette->pETRLEObject[ ubSilhouetteID ] );
+
+		// center the silhouette inside the slot cell, canceling the image offsets
+		INT16 sCenX = (INT16)( sX + abs( BIVOUAC_PANEL_CELL_WIDTH - (double)pTrav->usWidth ) / 2 ) - pTrav->sOffsetX;
+		INT16 sCenY = (INT16)( sY + abs( BIVOUAC_PANEL_CELL_HEIGHT - (double)pTrav->usHeight ) / 2 ) - pTrav->sOffsetY;
+
+		BltVideoObjectOutlineFromIndex( guiSAVEBUFFER, guiSILHOUETTE, ubSilhouetteID, sCenX, sCenY, 0, FALSE );
+	}
+
 	// items
 	for( INT32 iCounter = 0; iCounter < BIVOUAC_NUM_SLOTS; ++iCounter )
 	{
@@ -7338,28 +7400,98 @@ static void BivouacPanelSlotsCallback( MOUSE_REGION * pRegion, INT32 iReason )
 				// opens/closes) - items placed there are lost. Bypass it:
 				// loaded sector  -> AddItemToPool() straight into the world item list
 				// other sector   -> AddWorldItemsToUnLoadedSector() into the temp item file
+				// EXCEPTION: while the fullscreen sector inventory is OPEN, the sector
+				// storage (gWorldItems / temp file) is shadowed by the pInventoryPoolList
+				// snapshot - closing the panel overwrites the storage with that snapshot,
+				// so direct writes would be lost. If the open panel shows the squad's
+				// sector, add the item into the snapshot instead.
 				BOOLEAN fPlaced = FALSE;
 
 				INT16 sSqX, sSqY, sSqZ;
 				INT32 iSquadID = SQBM().GetActiveUISquadID( );
 				if( iSquadID != -1 && SectorSquadIsIn( ( INT8 ) iSquadID, &sSqX, &sSqY, &sSqZ ) )
 				{
-					if( gWorldSectorX == sSqX && gWorldSectorY == sSqY && gbWorldSectorZ == ( INT8 ) sSqZ )
+					BOOLEAN fLoadedSector = ( gWorldSectorX == sSqX && gWorldSectorY == sSqY && gbWorldSectorZ == ( INT8 ) sSqZ );
+
+					// drop position: squad leader's gridno (loaded sector only)
+					INT32 sDropGridNo = -1;
+					if( fLoadedSector )
 					{
-						// loaded sector: put the item on the ground at the squad leader's position
-						INT32 sGridNo = gMapInformation.sCenterGridNo;
+						sDropGridNo = gMapInformation.sCenterGridNo;
 						for( INT32 iMember = 0; iMember < NUMBER_OF_SOLDIERS_PER_SQUAD; ++iMember )
 						{
 							SOLDIERTYPE *pMember = Squad[ iSquadID ][ iMember ];
 							if( pMember != NULL && pMember->bActive && pMember->stats.bLife > 0 &&
 								pMember->sSectorX == sSqX && pMember->sSectorY == sSqY && pMember->bSectorZ == ( INT8 ) sSqZ )
 							{
-								sGridNo = pMember->sGridNo;
+								sDropGridNo = pMember->sGridNo;
+								break;
+							}
+						}
+					}
+
+					if( fShowMapInventoryPool &&
+						sSelMapX == sSqX && sSelMapY == sSqY && iCurrentMapSectorZ == ( INT32 ) sSqZ )
+					{
+						// sector inventory panel shadows this sector: append into its snapshot
+						WORLDITEM wi;
+						wi.initialize( );
+						wi.fExists = TRUE;
+						wi.bVisible = 1;
+						wi.ubLevel = 0;
+						wi.bRenderZHeightAboveLevel = 0;
+						wi.object = pWI->object;
+
+						if( fLoadedSector )
+						{
+							// resolve the gridno now: the snapshot is pushed back into the
+							// item pool through AddItemToPool() on panel close, which only
+							// silently fixes -1 for temp-file sectors (else beta warning spam)
+							wi.sGridNo = sDropGridNo;
+							wi.usFlags = WORLD_ITEM_REACHABLE;
+						}
+						else
+						{
+							wi.sGridNo = -1;
+							wi.usFlags = WORLD_ITEM_REACHABLE | WORLD_ITEM_GRIDNO_NOT_SET_USE_ENTRY_POINT;
+						}
+
+						// fill the FIRST free slot of the snapshot so the item shows up on
+						// the page the player is looking at, not on a trailing page
+						UINT32 uiDest = pInventoryPoolList.size( );
+						for( UINT32 i = 0; i < pInventoryPoolList.size( ); ++i )
+						{
+							if( !pInventoryPoolList[ i ].fExists && !pInventoryPoolList[ i ].object.exists( ) )
+							{
+								uiDest = i;
 								break;
 							}
 						}
 
-						if( AddItemToPool( sGridNo, &( pWI->object ), 1, 0, WORLD_ITEM_REACHABLE, 0 ) != NULL )
+						if( uiDest < pInventoryPoolList.size( ) )
+						{
+							pInventoryPoolList[ uiDest ] = wi;
+						}
+						else
+						{
+							pInventoryPoolList.push_back( wi );
+						}
+
+						// the non-INVFIX_Moa code paths require pInventoryPoolList and
+						// pUnSeenItems to stay the same size (CTD in RefreshSeenAndUnseenPools)
+						pUnSeenItems.resize( pInventoryPoolList.size( ) );
+
+						// recompute pages/size NOW: the save window on panel close covers only
+						// SLOT_COUNT * (iLastInventoryPoolPage + 1) entries, and the page count
+						// is normally only refreshed during rendering
+						ResizeInventoryList( );
+
+						fPlaced = TRUE;
+					}
+					else if( fLoadedSector )
+					{
+						// loaded sector: put the item on the ground at the squad leader's position
+						if( AddItemToPool( sDropGridNo, &( pWI->object ), 1, 0, WORLD_ITEM_REACHABLE, 0 ) != NULL )
 						{
 							fPlaced = TRUE;
 						}
@@ -7408,6 +7540,7 @@ static void BivouacPanelSlotsCallback( MOUSE_REGION * pRegion, INT32 iReason )
 			// place / swap / stack
 			INT32 iOldNumberOfObjects = pWI->object.ubNumberOfObjects;
 
+			// SQUAD_BIVOUAC: per-slot placement rules (size + item class)
 			// SQUAD_BIVOUAC: CTRL+LMB moves the whole cursor stack into the bivouac
 			// (from the sector inventory / merc), overriding stack merging
 			if( _KeyDown( CTRL ) )
@@ -7421,6 +7554,63 @@ static void BivouacPanelSlotsCallback( MOUSE_REGION * pRegion, INT32 iReason )
 				{
 					ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, gzLateLocalizedString[ 72 ] );
 				}
+
+				fMapPanelDirty = TRUE;
+				return;
+			}
+
+			// SQUAD_BIVOUAC: per-slot rule check for a direct drop into this slot.
+			// Placement into an EMPTY slot or a stack-partner slot must obey the rule.
+			// The live slot content comes from the panel stash (pBivouacPanelList), NOT from
+			// the manager storage - the manager only sees the edits when the panel closes.
+			// (Swapping an existing item out is allowed: the slot keeps a legal item.)
+			OBJECTTYPE* pLiveSlotItem = ( gpItemPointer != NULL && pWI->object.exists( ) ) ? &( pWI->object ) : NULL;
+
+			int iFitReason = ( gpItemPointer != NULL && gpItemPointer->exists( ) )
+				? SQBM().CanItemFitInBivouacSlot( (UINT8)iCounter, gpItemPointer,
+					(UINT8)gpItemPointer->ubNumberOfObjects, pLiveSlotItem )
+				: BIVOUAC_FIT_OK;
+
+			if( iFitReason != BIVOUAC_FIT_OK )
+			{
+				BivouacSlotConfig config = SQBM().GetSlotConfig( iCounter );
+
+				CHAR16 szReason[ 128 ];
+
+				// unconfigured slot (no pocket template assigned)
+				if( config.pPocketIndex == BIVOUAC_SLOT_POCKET_NONE ||
+					config.pPocketIndex >= LBEPocketType.size( ) )
+				{
+					swprintf( szReason, gzLateLocalizedString[ 76 ] );
+				}
+				// wrong item class per the pocket template restriction mask
+				else if( iFitReason == BIVOUAC_FIT_WRONG_CLASS )
+				{
+					// wrong item class: [77] = "slot does not accept this type"
+					swprintf( szReason, gzLateLocalizedString[ 77 ] );
+				}
+				else if( iFitReason == BIVOUAC_FIT_STACK_OVERFLOW )
+				{
+					// stack overflow: [79] = "stack does not fit (in slot: N, capacity M)"
+					swprintf( szReason, gzLateLocalizedString[ 79 ],
+						ShortItemNames[ gpItemPointer->usItem ],
+						pLiveSlotItem->ubNumberOfObjects,
+						SQBM().GetSlotCapacityForSize( iCounter,
+							(UINT8)__min( Item[ gpItemPointer->usItem ].ItemSize, gGameExternalOptions.guiMaxItemSize ) ) );
+				}
+				else
+				{
+					// item does not fit: [78] = "item (name, size N) does not fit (max M)"
+					UINT8 ubItemSize = (UINT8)__min( Item[ gpItemPointer->usItem ].ItemSize, gGameExternalOptions.guiMaxItemSize );
+					UINT8 ubMaxAllowed = SQBM().GetSlotCapacityForSize( iCounter, ubItemSize );
+
+					swprintf( szReason, gzLateLocalizedString[ 78 ],
+						ShortItemNames[ gpItemPointer->usItem ],
+						ubItemSize,
+						ubMaxAllowed );
+				}
+
+				ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, szReason );
 
 				fMapPanelDirty = TRUE;
 				return;

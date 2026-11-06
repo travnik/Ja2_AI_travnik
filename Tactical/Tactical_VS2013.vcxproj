@@ -250,6 +250,7 @@
     <ClCompile Include="XML_IncompatibleAttachments.cpp" />
     <ClCompile Include="XML_ItemAdjustments.cpp" />
     <ClCompile Include="XML_Keys.cpp" />
+    <ClCompile Include="XML_BivouacSlots.cpp" />
     <ClCompile Include="XML_Launchable.cpp" />
     <ClCompile Include="XML_LBEPocket.cpp" />
     <ClCompile Include="XML_LBEPocketPopup.cpp" />

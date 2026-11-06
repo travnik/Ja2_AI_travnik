@@ -2408,8 +2408,10 @@ void LoadGameExternalOptions()
 
 	// SQUAD_BIVOUAC: squad bivouac inventory settings
 	gGameExternalOptions.usBivouacMinMercsRequired = (UINT16)iniReader.ReadInteger("Extended Options", "BIVOUAC_MIN_MERCS_REQUIRED", 1, 1, 20);
-	gGameExternalOptions.uiBivouacWeightCapacity = (UINT32)iniReader.ReadInteger("Extended Options", "BIVOUAC_WEIGHT_CAPACITY", 2000, 1, 1000000);
+	gGameExternalOptions.uiBivouacWeightCapacity = (UINT32)iniReader.ReadInteger("Extended Options", "BIVOUAC_WEIGHT_CAPACITY", 1000, 1, 1000000);
 	gGameExternalOptions.usBivouacMovementPenaltyMultiplier = (UINT16)iniReader.ReadInteger("Extended Options", "BIVOUAC_MOVEMENT_PENALTY_MULTIPLIER", 15, 0, 1000);
+	// SQUAD_BIVOUAC: default pocket template (Pockets.xml pIndex) for slots missing from BivouacSlots.xml
+	gGameExternalOptions.usBivouacSlotDefaultPocket = (UINT16)iniReader.ReadInteger("Extended Options", "BIVOUAC_SLOT_DEFAULT_POCKET", 255, 0, 255);
 }
 
 // SANDRO - externalization of all skill trait values and STOMP settings into separate file

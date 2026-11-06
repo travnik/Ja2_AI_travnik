@@ -35,6 +35,12 @@
 
 #include "SquadBivouacManager.h"
 
+const STR BIVOUAC_SLOTS_FILE_PATH = "TableData\\Items\\BivouacSlots.xml";
+
+// SQUAD_BIVOUAC: per-slot bivouac -> NIV pocket template references.
+// Filled by LoadSlotRules(): INI default first, then BivouacSlots.xml overrides per slot.
+BivouacSlotConfig	gBivouacSlotsConfig[ BIVOUAC_NUM_SLOTS ];
+
 // SQUAD_BIVOUAC: sector inventory snapshot list (defined in Map Screen Interface Map Inventory.cpp)
 extern std::vector<WORLDITEM> pUnSeenItems;
 
@@ -51,6 +57,7 @@ SquadBivouacManager::SquadBivouacManager()
 	, m_iPendingDisbandSquad( -1 )
 	, m_usPendingDisbandSoldierID( 0 )
 	, m_iActiveUISquad( -1 )
+	, m_iValidationSquad( -1 )
 {
 	m_PendingAssignChange.fValid = FALSE;
 	m_PendingAssignChange.usSoldierID = 0;
@@ -62,6 +69,12 @@ SquadBivouacManager::SquadBivouacManager()
 	for ( INT32 i = 0; i < NUMBER_OF_SQUADS; ++i )
 	{
 		m_Bivouac[i].initialize();
+	}
+
+	// SQUAD_BIVOUAC: all slots unconfigured until LoadSlotRules() assigns pocket templates
+	for ( INT32 i = 0; i < BIVOUAC_NUM_SLOTS; ++i )
+	{
+		gBivouacSlotsConfig[i].pPocketIndex = BIVOUAC_SLOT_POCKET_NONE;
 	}
 }
 
@@ -163,6 +176,7 @@ void SquadBivouacManager::Initialize()
 	m_iPendingDisbandSquad = -1;
 	m_usPendingDisbandSoldierID = 0;
 	m_iActiveUISquad = -1;
+	m_iValidationSquad = -1;
 	m_PendingAssignChange.fValid = FALSE;
 
 	// config values are NOT read here.
@@ -912,6 +926,223 @@ void SquadBivouacManager::StoreBivouacStash( std::vector< WORLDITEM >& vec )
 			m_Bivouac[iIndex].Slots[i] = vec[i].object;
 		}
 	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Per-slot placement rules (SQUAD_BIVOUAC)
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// SQUAD_BIVOUAC: TRUE if the slot references a valid NIV pocket template (LBEPocketType)
+BOOLEAN SquadBivouacManager::IsSlotConfigured( UINT32 uiSlot ) const
+{
+	if ( uiSlot >= BIVOUAC_NUM_SLOTS )
+	{
+		return( FALSE );
+	}
+
+	// an unconfigured slot (0xFF) matches no pocket template
+	if ( gBivouacSlotsConfig[uiSlot].pPocketIndex == BIVOUAC_SLOT_POCKET_NONE )
+	{
+		return( FALSE );
+	}
+
+	// the referenced pocket template must exist in the loaded Pockets.xml data
+	return( gBivouacSlotsConfig[uiSlot].pPocketIndex < LBEPocketType.size( ) );
+}
+
+// SQUAD_BIVOUAC: NIV capacity of the slot's pocket template for one item size (0 = does not fit)
+UINT8 SquadBivouacManager::GetSlotCapacityForSize( UINT32 uiSlot, UINT8 ubItemSize ) const
+{
+	if ( IsSlotConfigured( uiSlot ) == FALSE )
+	{
+		return( 0 );
+	}
+
+	UINT8 ubPocketType = gBivouacSlotsConfig[uiSlot].pPocketIndex;
+
+	// item sizes above guiMaxItemSize cannot occur (Items.xml validation) but clamp anyway,
+	// exactly like the NIV code does when indexing ItemCapacityPerSize
+	UINT8 ubSize = (UINT8)__min( ubItemSize, gGameExternalOptions.guiMaxItemSize );
+
+	// Safety boundary check to prevent out-of-bounds array access in case of corrupted item data
+	if (ubSize >= 136)
+	{
+		return(0);
+	}
+
+	return(LBEPocketType[ubPocketType].ItemCapacityPerSize[ubSize]);
+}
+
+BivouacSlotConfig SquadBivouacManager::GetSlotConfig( UINT32 uiSlot ) const
+{
+	BivouacSlotConfig empty;
+
+	empty.pPocketIndex = BIVOUAC_SLOT_POCKET_NONE;
+
+	if ( uiSlot >= BIVOUAC_NUM_SLOTS )
+	{
+		return( empty );
+	}
+
+	return( gBivouacSlotsConfig[uiSlot] );
+}
+
+void SquadBivouacManager::SetSlotConfig( UINT32 uiSlot, const BivouacSlotConfig& config )
+{
+	if ( uiSlot < BIVOUAC_NUM_SLOTS )
+	{
+		gBivouacSlotsConfig[uiSlot] = config;
+	}
+}
+
+void SquadBivouacManager::LoadSlotRules( void )
+{
+	// INI default pocket index for every slot (BivouacSlots.xml overrides per slot).
+	// The value 0xFF keeps a slot unconfigured (rejects everything).
+	BivouacSlotConfig def;
+
+	def.pPocketIndex = (UINT8)gGameExternalOptions.usBivouacSlotDefaultPocket;
+
+	for ( UINT32 i = 0; i < BIVOUAC_NUM_SLOTS; ++i )
+	{
+		gBivouacSlotsConfig[i] = def;
+	}
+
+	// SQUAD_BIVOUAC: per-slot overrides from BivouacSlots.xml (optional file).
+	// ReadInBivouacSlotRules() fills gBivouacSlotsConfig entries whose uiIndex exists in the
+	// file; slots not present in the file keep the INI default pocket index.
+	extern BOOLEAN ReadInBivouacSlotRules( STR fileName );
+	STR pFileName = BIVOUAC_SLOTS_FILE_PATH;
+	if ( FileExists(pFileName) )
+	{
+		if ( !ReadInBivouacSlotRules( pFileName ) )
+		{
+			ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, L"Error: failed to parse TableData\\Items\\BivouacSlots.xml - using default slot rules." );
+		}
+	}
+}
+
+// SQUAD_BIVOUAC: full NIV placement validation chain for one bivouac slot
+int SquadBivouacManager::CanItemFitInBivouacSlot( UINT8 ubSlotIndex, OBJECTTYPE* pObject, UINT8 ubCountToAdd, OBJECTTYPE* pCurrentSlotItem )
+{
+	// invalid slot or object -> reject
+	if ( ubSlotIndex >= BIVOUAC_NUM_SLOTS ||
+		 pObject == NULL ||
+		 pObject->exists() == false )
+	{
+		return( BIVOUAC_FIT_NO_POCKET );
+	}
+
+	// the slot must reference a valid NIV pocket template
+	if ( IsSlotConfigured( ubSlotIndex ) == FALSE )
+	{
+		return( BIVOUAC_FIT_NO_POCKET );
+	}
+
+	UINT8 ubPocketType = gBivouacSlotsConfig[ubSlotIndex].pPocketIndex;
+
+	// real item size from the item table (NIV sizes are clamped to guiMaxItemSize)
+	UINT8 bItemSize = (UINT8)__min( Item[ pObject->usItem ].ItemSize, gGameExternalOptions.guiMaxItemSize );
+
+	// capacity of the pocket template for this size; 0 = item does not fit by dimensions
+	UINT8 ubMaxAllowed = GetSlotCapacityForSize( ubSlotIndex, bItemSize );
+
+	if ( ubMaxAllowed == 0 )
+	{
+		return( BIVOUAC_FIT_NO_CAPACITY );
+	}
+
+	// class restriction mask of the pocket template (0 = any class)
+	if ( LBEPocketType[ubPocketType].pRestriction != 0 &&
+		 ( Item[ pObject->usItem ].usItemClass & LBEPocketType[ubPocketType].pRestriction ) == 0 )
+	{
+		return( BIVOUAC_FIT_WRONG_CLASS );
+	}
+
+	// resolve the current slot content:
+	// BIVOUAC_SLOT_SELF = read from the squad storage, NULL = empty slot
+	OBJECTTYPE* pSlotObj = NULL;
+
+	if ( pCurrentSlotItem == BIVOUAC_SLOT_SELF )
+	{
+		INT32 iValidationSquad = ( m_iValidationSquad != -1 ) ? m_iValidationSquad : m_iActiveUISquad;
+
+		INT32 iDataIndex = SquadToDataIndex( iValidationSquad );
+
+		if ( iDataIndex == -1 )
+		{
+			return( BIVOUAC_FIT_NO_POCKET );
+		}
+
+		pSlotObj = &( m_Bivouac[iDataIndex].Slots[ubSlotIndex] );
+	}
+	else
+	{
+		pSlotObj = pCurrentSlotItem;
+	}
+
+	// empty slot: accept up to the template capacity
+	if ( pSlotObj == NULL || pSlotObj->exists( ) == false )
+	{
+		return( ubCountToAdd <= ubMaxAllowed ? BIVOUAC_FIT_OK : BIVOUAC_FIT_STACK_OVERFLOW );
+	}
+
+	// money always stacks (two separate piles are merged by the stash code)
+	if ( Item[ pObject->usItem ].usItemClass == IC_MONEY )
+	{
+		return( BIVOUAC_FIT_OK );
+	}
+
+	// occupied slot with the SAME item: stack up to the remaining capacity
+	if ( pSlotObj->usItem == pObject->usItem )
+	{
+		UINT8 ubCurrentCount = pSlotObj->ubNumberOfObjects;
+
+		return( (UINT16)( ubCurrentCount + ubCountToAdd ) <= (UINT16)ubMaxAllowed ? BIVOUAC_FIT_OK : BIVOUAC_FIT_STACK_OVERFLOW );
+	}
+
+	// occupied slot with a DIFFERENT item: allowed (swap, like the vehicle trunk).
+	// The swapped-out item keeps its own legality; the slot just changes owners.
+	return( BIVOUAC_FIT_OK );
+}
+
+BOOLEAN SquadBivouacManager::CanSlotAcceptItem( INT32 iSquadID, UINT32 uiSlot, OBJECTTYPE* pObj ) const
+{
+	// invalid squad/slot/object -> reject
+	if ( SquadToDataIndex( iSquadID ) == -1 ||
+		 uiSlot >= BIVOUAC_NUM_SLOTS ||
+		 pObj == NULL ||
+		 pObj->exists() == false )
+	{
+		return( FALSE );
+	}
+
+	// delegate to the NIV validation chain; the whole cursor stack must fit into the slot.
+	// Slot state is validated against iSquadID (the bivouac this check is for).
+	SquadBivouacManager* pThis = (SquadBivouacManager*)this;
+
+	// const cast is safe here: CanItemFitInBivouacSlot only reads the squad's slots
+	pThis->SetValidationSquad( iSquadID );
+
+	int iReason = pThis->CanItemFitInBivouacSlot( (UINT8)uiSlot, pObj, pObj->ubNumberOfObjects, BIVOUAC_SLOT_SELF );
+
+	// consume the validation squad so later calls fall back to the active UI squad
+	pThis->SetValidationSquad( -1 );
+
+	return( iReason == BIVOUAC_FIT_OK ? TRUE : FALSE );
+}
+
+BOOLEAN SquadBivouacManager::CanAnySlotAcceptItem( INT32 iSquadID, OBJECTTYPE* pObj ) const
+{
+	for ( UINT32 i = 0; i < BIVOUAC_NUM_SLOTS; ++i )
+	{
+		if ( CanSlotAcceptItem( iSquadID, i, pObj ) )
+		{
+			return( TRUE );
+		}
+	}
+
+	return( FALSE );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

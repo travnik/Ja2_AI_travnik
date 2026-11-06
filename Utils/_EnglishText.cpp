@@ -6906,6 +6906,10 @@ STR16 gzLateLocalizedString[] =
 	L"Squad %d bivouac",	// 73 SQUAD_BIVOUAC panel header: squad title (squad number)
 	L"Weight current/max %d.%d/%d.%d",	// 74 SQUAD_BIVOUAC panel header: current/max weight (kg, one decimal)
 	L"Weight current/max ",	// 75 SQUAD_BIVOUAC panel header: weight line prefix (no formatting)
+	L"This bivouac slot is not configured.",	// 76 SQUAD_BIVOUAC: slot has no pocket template assigned
+	L"This bivouac slot does not accept this type of item.",	// 77 SQUAD_BIVOUAC: wrong item class (pocket restriction)
+	L"'%s': size %d, slot capacity %d.",	// 78 SQUAD_BIVOUAC: item does not fit slot capacity (name, item size, ItemCapacityPerSize)
+	L"'%s': stack does not fit (in slot %d, capacity %d).",	// 79 SQUAD_BIVOUAC: stack overflow (name, current stack count, capacity)
 };
 
 // HEADROCK HAM 3.5: Added sector name
