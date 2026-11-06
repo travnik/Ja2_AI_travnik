@@ -1,7 +1,15 @@
 # SQUAD_BIVOUAC — Техническое описание (для разработки)
 
-_Документ для разработчиков. Дата: 06.11.2026. Соответствует ветке `merge/revision-3290` (v2.2)._
+_Документ для разработчиков. Дата: 06.11.2026. Соответствует ветке `merge/revision-3290` (v2.3)._
 _Пользовательское описание фичи: см. [SQUAD_BIVOUAC.md](SQUAD_BIVOUAC.md)._
+
+_Изменения 2.3: центрирование кнопок панели бивуака («Выгрузить всё» + «Готово») по
+горизонтали и вертикали под сеткой слотов; блокировка тактического выхода из сектора
+отрядом с непустым бивуаком (ранее выход «телепортировал» отряд мимо guard'а — мерк
+спавнился в чужой точке вставки); автоматическая выгрузка бивуака в сектор при потере
+отрядом последнего бойца — увольнение, истечение контракта (`StrategicRemoveMerc`) и
+смерть последнего бойца (`StrategicHandlePlayerTeamMercDeath`) через новый метод
+`AutoDumpBivouacOnSquadLoss()` (без YES/NO-диалога)._
 
 _Изменения 2.2: кнопка «Выгрузить всё» на панели (DumpToFloor через UI); кнопка
 открытия/закрытия бивуака в тулбаре секторного инвентаря; красная сетка на
@@ -38,23 +46,28 @@ _Изменения 2.1: конфигурация слотов переведе�
 ```
 Tactical/
   SquadBivouacManager.h        // класс, BivouacData, BivouacSlotConfig, SQBM()
-  SquadBivouacManager.cpp      // вся логика фичи (~1250 строк)
+  SquadBivouacManager.cpp      // вся логика фичи (~1300 строк)
   XML_BivouacSlots.cpp         // парсер TableData\Items\BivouacSlots.xml
   Squads.cpp / Squads.h        // хуки: Initialize, перехват роспуска, Save/Load,
                                // gBivouacAllowRemovalOnce, WouldRemovalTriggerBivouacGuard()
+  Strategic Exit GUI.cpp       // хук: блокировка тактического выхода (InitSectorExitMenu)
+  Tactical All.h               // include SquadBivouacManager.h
 Strategic/
-  Strategic Movement.cpp       // хук: штраф времени пути (GetSectorMvtTimeForGroup)
+  Strategic Movement.cpp       // хуки: штраф времени пути (GetSectorMvtTimeForGroup),
+                               // блокировка движения (AddWaypointToPGroup)
   Assignments.cpp              // хуки: усталость в пути (FatigueCharacter),
                                // предпроверки смены назначения + replay
+  Merc Contract.cpp            // хук: авто-дамп при уходе насовсем (StrategicRemoveMerc)
+  Strategic Merc Handler.cpp   // хук: авто-дамп при смерти (StrategicHandlePlayerTeamMercDeath)
   Map Screen Interface Map Inventory.cpp  // панель бивуака (RenderBivouacPanel, слоты, callback'и)
   mapscreen.cpp                // клавиша B, CreateDestroyBivouacPanel в handle-фазе,
                                // подавление team-list при открытой панели
 GameSettings.h / .cpp          // опции BIVOUAC_* в GAME_EXTERNAL_OPTIONS
 GameVersion.h                  // SQUAD_BIVOUAC_SAVEGAME = 152
 gameloop.cpp                   // SQBM().LoadSlotRules() в InitializeGame()
-Utils/_RussianText.cpp         // gzLateLocalizedString[67..78]
+Utils/_RussianText.cpp         // gzLateLocalizedString[67..82]
 Utils/_EnglishText.cpp         // то же, EN
-Utils/ExportStrings.cpp        // диапазон экспорта LateLocalized = 78
+Utils/ExportStrings.cpp        // диапазон экспорта LateLocalized = 82
 Tactical/Tactical_VS2010.vcxproj / Tactical_VS2013.vcxproj (+ .filters)  // XML_BivouacSlots.cpp
 ```
 
@@ -309,10 +322,23 @@ CanItemFitInBivouacSlot =
 
 ### Кнопки панели
 
+Обе кнопки образуют одну группу, центрированную под сеткой слотов **по горизонтали и
+вертикали**. Геометрия (`BivouacPanelCreateSlots` + `BivouacPanelGetButtonsY`):
+
+- группа: `[Выгрузить всё 28px] + 6px + [Готово 35px] = 69px`, старт X = `(MAP_BORDER_X − 69) / 2`;
+- центр группы совпадает с центром сетки слотов (сетка центрируется той же формулой
+  в `BivouacPanelGetSlotCoords`);
+- вертикаль: `BivouacPanelGetButtonsY()` вычисляет низ сетки слотов той же формулой,
+  что и `BivouacPanelGetSlotCoords`, и центрирует полосу кнопок (28px) между низом
+  сетки и нижним краем панели (`BIVOUAC_PANEL_END_Y`); каждая кнопка центрируется по
+  своей реальной высоте (28 vs 27) на общей средней линии;
+- размеры спрайтов задаются константами `BIVOUAC_PANEL_*_BTN_WIDTH/HEIGHT` — при
+  замене графики кнопок править только их.
+
 | Кнопка | Графика | Позиция | Действие |
 |---|---|---|---|
-| Done | `INTERFACE\itemdescdonebutton.sti` | низ панели, в группе по центру под слотами | `CloseBivouacPanel(TRUE)` |
-| «Выгрузить всё» | `sector_inventory_buttons.sti` idx 16/14/15 (иконка Stack&Merge) | низ панели, слева от Done, группа центрирована: [28px] + 6px + [35px], старт = (MAP_BORDER_X − 69) / 2 | `BivouacPanelDropAllBtn` → `DumpToFloor` активного отряда |
+| Done | `INTERFACE\itemdescdonebutton.sti` (35×27) | низ панели, правая часть центрированной группы | `CloseBivouacPanel(TRUE)` |
+| «Выгрузить всё» | `sector_inventory_buttons.sti` idx 16/14/15 (иконка Stack&Merge, 28×28) | низ панели, левая часть центрированной группы | `BivouacPanelDropAllBtn` → `DumpToFloor` активного отряда |
 
 ### Кнопка бивуака в тулбаре секторного инвентаря
 
@@ -470,7 +496,7 @@ if( pGroup->fPlayer && !pGroup->fBetweenSectors && !pGroup->pWaypoints )
         {
             if( SQBM().CanSquadMoveWithBivouac( iSquad ) == FALSE )
             {
-                ScreenMsg( ..., gzLateLocalizedString[ 80 ], gGameExternalOptions.usBivouacMoveMinMercs );
+                MapScreenMessage( ..., gzLateLocalizedString[ 80 ], gGameExternalOptions.usBivouacMoveMinMercs );
                 return( FALSE );
             }
             break;
@@ -479,6 +505,8 @@ if( pGroup->fPlayer && !pGroup->fBetweenSectors && !pGroup->pWaypoints )
 }
 ```
 Блокируется только первый waypoint (инициирующий движение); отряд в пути не затрагивается.
+⚠️ MapScreenMessage (не ScreenMsg): [80] содержит `%d`, MapScreenMessage форматирует сам;
+в `DoMessageBox` строку нужно форматировать через `swprintf` заранее (см. хук 10).
 
 ### 6. gameloop.cpp — InitializeGame()
 
@@ -498,6 +526,73 @@ SQBM().LoadSlotRules();   // после всех ini-загрузок
 
 `CreateMapInventoryButtons()`: кнопка бивуака `guiMapInvenFilterButton[12]`
 (`MAP_INVENTORY_FILTER_BUTTONS` = 13) — тоггл панели бивуака, см. раздел UI.
+
+### 10. Tactical/Strategic Exit GUI.cpp — тактический выход из сектора
+
+`InitSectorExitMenu()` — **ранняя проверка до открытия меню выхода** (и до того, как
+мерки начнут уходить с карты):
+
+```cpp
+if( gusSelectedSoldier != NOBODY && MercPtrs[ gusSelectedSoldier ] != NULL )
+{
+    extern INT8 SquadMovementGroups[ ];   // локальный extern, как в остальных пользователях
+
+    if( pExitSoldier->bAssignment >= 0 && pExitSoldier->bAssignment < ON_DUTY &&
+        pExitSoldier->flags.fBetweenSectors == FALSE &&
+        SquadMovementGroups[ pExitSoldier->bAssignment ] != 0 &&
+        SQBM().CanSquadMoveWithBivouac( pExitSoldier->bAssignment ) == FALSE )
+    {
+        // сообщение [80] содержит %d — форматируется через swprintf ДО DoMessageBox
+        // (DoMessageBox не форматирует: «голый» %d читает мусор из стека)
+        DoMessageBox( MSG_BOX_BASIC_STYLE, zBivouacMoveMsg, GAME_SCREEN, MSG_BOX_FLAG_OK, ... );
+        return( TRUE );   // меню выхода не открывается, мерк остаётся на месте
+    }
+}
+```
+
+Без этого хука гард в `AddWaypointToPGroup()` срабатывал слишком поздно: в
+`AllMercsHaveWalkedOffSector()` его FALSE игнорировался, и `SetGroupSectorValue()`
+телепортировал отряд в соседний сектор → мерк спавнился в точке вставки по
+направлению движения вместо своей позиции.
+
+⚠️ Файл собирается с **отключённым PCH** (`PRECOMPILEDHEADERS` не определён) — include
+`SquadBivouacManager.h` добавлен в `#else`-ветку включений (см. инвариант 8). Там же
+подключён `Tactical All.h`-путь: include добавлен и в `Tactical All.h`.
+
+### 11. Потеря отрядом последнего бойца — авто-дамп бивуака
+
+Центральные точки ухода бойца «насовсем», в начале каждой добавлен авто-дамп:
+
+| Точка | Файл | Покрывает |
+|---|---|---|
+| `StrategicRemoveMerc()` | Strategic/Merc Contract.cpp | увольнение, истечение контракта, cleanup мёртвых |
+| `StrategicHandlePlayerTeamMercDeath()` | Strategic/Strategic Merc Handler.cpp | смерть в тактике / на карте / в авто-резолве |
+
+```cpp
+// StrategicRemoveMerc(), в самом начале, ДО RemoveCharacterFromSquads():
+if( pSoldier != NULL && pSoldier->bActive &&
+    !( gTacticalStatus.uiFlags & LOADING_SAVED_GAME ) &&
+    pSoldier->bAssignment >= 0 && pSoldier->bAssignment < ON_DUTY )
+{
+    if( NumberOfPeopleInSquad( bSquad ) == 1 && SQBM().IsEmpty( bSquad ) == FALSE )
+        SQBM().AutoDumpBivouacOnSquadLoss( bSquad );
+}
+
+// StrategicHandlePlayerTeamMercDeath(), в самом начале:
+// то же, но считает ТОЛЬКО ЖИВЫХ членов отряда (iLive <= 1) и дополнительно
+// требует pSoldier->flags.fBetweenSectors == FALSE
+```
+
+`AutoDumpBivouacOnSquadLoss(iSquadID)` (новый публичный метод менеджера): пустой
+бивуак → тихий выход; отряд между секторами → выход без дампа (нет осмысленного
+места сброса, предметы остаются в скрытом бивуаке отряда); иначе —
+`DumpToFloor(iSquadID, sX, sY, bZ, -1)` + сообщение [68].
+
+Мотивация: для уходящего «насовсем» бойца YES/NO-диалог не нужен — вещи обязаны
+остаться в секторе. Ранний дамп (до `RemoveCharacterFromSquads()`) заодно опустошает
+бивуак, поэтому disband-guard внутри проходит молча, а раньше `StrategicRemoveMerc`
+игнорировал FALSE от guard'а и продолжал удаление → бивуак оставался у осиротевшего
+отряда (предметы «исчезали»). Для мёртвых гард не срабатывал вообще (`bLife > 0`).
 
 ---
 
@@ -552,6 +647,10 @@ SQBM().LoadSlotRules();   // после всех ini-загрузок
 15. **DumpToFloor: два возвращения.** Ветка затенения секторного инвентаря делает ранний `return` — перед ним ОБЯЗАТЕЛЬНО обновить `pBivouacPanelList` (BuildBivouacStash), иначе закрытие панели бивуака вернёт выгруженные предметы обратно в слоты.
 16. **Путь BivouacSlots.xml** — `TableData\Items\BivouacSlots.xml` (как у всех предметных XML), НЕ `Items\...`. VFS не поднимает второй путь — файл бы молча не загружался.
 17. **Курсор после swap.** После `PlaceObjectInInventoryStash` с обменом нужно обновить `guiExternVo`/`gusExternVoSubIndex` + `EXTERN_CURSOR`, иначе в руке рисуется старый предмет.
+18. **[80] содержит `%d`.** `MapScreenMessage` форматирует сам; `DoMessageBox` / `ScreenMsg` — нет: неформатированный `%d` читает мусор из стека (ловили: «нужно минимум 508487964 бойцов»). В `InitSectorExitMenu` строка форматируется через `swprintf` с `gGameExternalOptions.usBivouacMoveMinMercs` ДО `DoMessageBox`.
+19. **Тактический выход — блокировать ДО начала ухода.** Гард в `AddWaypointToPGroup()` не работает для тактического выхода: `AllMercsHaveWalkedOffSector()` игнорирует его FALSE и в любом случае вызывает `RemoveSoldierFromTacticalSector` + `SetGroupSectorValue` (телепорт в соседний сектор). Блокировка — в `InitSectorExitMenu()` до открытия меню.
+20. **Авто-дамп при потере последнего бойца — до удаления из отряда.** `AutoDumpBivouacOnSquadLoss` вызывается в начале `StrategicRemoveMerc` / `StrategicHandlePlayerTeamMercDeath`, пока `Squad[][]` и локация отряда ещё валидны. Опустошение бивуака до `RemoveCharacterFromSquads()` делает disband-guard молчаливым. Для мёртвых гард не срабатывал (`bLife > 0`) — потому отдельный хук в смерти со счётом живых членов.
+21. **Edge case «отряд в пути»:** `AutoDumpBivouacOnSquadLoss` не выгружает бивуак отряда между секторами (нет осмысленного места сброса) — предметы остаются в скрытом бивуаке осиротевшего отряда до его повторного использования.
 
 ---
 
@@ -671,6 +770,29 @@ SQBM().LoadSlotRules();   // после всех ini-загрузок
 - [ ] Роспуск незагруженного сектора с открытым инвентарём → предметы в temp-файле после закрытия
 - [ ] Пустой бивуак → без диалога
 - [ ] Смерть последнего бойца в бою → без диалога, бивуак цел
+
+### Увольнение / контракт / смерть (авто-дамп)
+- [ ] Уволить последнего бойца отряда с непустым бивуаком → вещи на земле сектора, сообщение [68], YES/NO-диалога нет
+- [ ] Истечение контракта последнего бойца → то же самое
+- [ ] Смерть последнего бойца в бою → вещи в секторе, сообщение [68]
+- [ ] Увольнение бойца из отряда из 2+ человек → бивуак остаётся у отряда, без дампа
+- [ ] Пустой бивуак → ничего не происходит, без сообщений
+- [ ] Контракт истёк у отряда в пути → вещи остаются в бивуаке (edge case)
+- [ ] После авто-дампа вещи видны в секторном инвентаре / на земле при следующем заходе
+
+### Тактический выход с бивуаком
+- [ ] Мерк с непустым бивуаком один в отряде → у края сектора OK в меню выхода → messagebox [80] с правильным числом (не «мусорное»), мерк остаётся в секторе
+- [ ] Сообщение подставляет значение BIVOUAC_MOVE_MIN_MERCS из ini (по умолчанию 2)
+- [ ] Добавить второго бойца → выход через край сектора работает
+- [ ] Пустой бивуак → тактический выход без ограничений
+- [ ] Выход через exit-grid (подземелья) → тоже блокируется
+- [ ] Мерк остался на своей позиции (не в точке вставки по краю) при повторном открытии сектора
+
+### Кнопки панели (компоновка)
+- [ ] «Выгрузить всё» + «Готово» стоят по центру панели по горизонтали (группа 28+6+35=69px, старт (261−69)/2)
+- [ ] Кнопки центрированы по вертикали между нижним рядом слотов и нижним краем панели
+- [ ] Кнопки не перекрывают слоты и нижнюю рамку панели при разных разрешениях (640×480 / 800×600 / 1024×768)
+- [ ] Клик по обеим кнопкам работает, hover-подсветка корректна
 
 ### Сейвы
 - [ ] Сохранить/загрузить — бивуаки восстановлены
