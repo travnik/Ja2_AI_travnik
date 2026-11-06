@@ -294,6 +294,20 @@ static BOOLEAN gfBivouacPanelCreated = FALSE;
 // without clobbering each other's contents.
 static std::vector<WORLDITEM> pBivouacPanelList;
 
+// SQUAD_BIVOUAC: TRUE if the slot is disabled (not configured to a pocket template)
+static BOOLEAN BivouacSlotDisabled( INT32 iSlot )
+{
+	BivouacSlotConfig config = SQBM().GetSlotConfig( iSlot );
+
+	if( config.pPocketIndex == BIVOUAC_SLOT_POCKET_NONE ||
+		config.pPocketIndex >= LBEPocketType.size( ) )
+	{
+		return( TRUE );
+	}
+
+	return( FALSE );
+}
+
 // SQUAD_BIVOUAC: place the whole cursor stack into the bivouac panel stash.
 // Returns TRUE when the cursor is empty afterwards (everything fit); FALSE when the
 // bivouac is full / no slot accepts the item and (part of) the item is still on the cursor
@@ -7128,21 +7142,13 @@ void RenderBivouacPanel( void )
 			continue;
 		}
 
-		BivouacSlotConfig config = SQBM().GetSlotConfig( iCounter );
-
-		// unconfigured slot: no silhouette
-		if( config.pPocketIndex == BIVOUAC_SLOT_POCKET_NONE )
+		// disabled slot: no silhouette, the hatching pass below marks it
+		if( BivouacSlotDisabled( iCounter ) )
 		{
 			continue;
 		}
 
-		// the referenced pocket template must exist in the loaded Pockets.xml data
-		if( config.pPocketIndex >= LBEPocketType.size( ) )
-		{
-			continue;
-		}
-
-		UINT8 ubSilhouetteID = LBEPocketType[ config.pPocketIndex ].pSilhouette;
+		UINT8 ubSilhouetteID = LBEPocketType[ gBivouacSlotsConfig[ iCounter ].pPocketIndex ].pSilhouette;
 
 		// silhouette index must exist in the Silhouettes.sti image collection
 		if( ubSilhouetteID >= hSilhouette->usNumberOfObjects )
@@ -7159,6 +7165,41 @@ void RenderBivouacPanel( void )
 		INT16 sCenY = (INT16)( sY + abs( BIVOUAC_PANEL_CELL_HEIGHT - (double)pTrav->usHeight ) / 2 ) - pTrav->sOffsetY;
 
 		BltVideoObjectOutlineFromIndex( guiSAVEBUFFER, guiSILHOUETTE, ubSilhouetteID, sCenX, sCenY, 0, FALSE );
+	}
+
+	// SQUAD_BIVOUAC: disabled slots get a subtle dark tint + dim red grid.
+	// A disabled slot has no pocket template assigned (pPocketIndex == 0xFF or out of
+	// range): it rejects every item, so it is marked unavailable without shouting.
+	UINT16 usBivouacGrid = Get16BPPColor( FROMRGB( 110, 45, 45 ) );
+
+	for( INT32 iCounter = 0; iCounter < BIVOUAC_NUM_SLOTS; ++iCounter )
+	{
+		if( BivouacSlotDisabled( iCounter ) == FALSE )
+		{
+			continue;
+		}
+
+		BivouacPanelGetSlotCoords( iCounter, &sX, &sY );
+
+		INT16 sRX = (INT16)( sX + 2 );
+		INT16 sRY = (INT16)( sY + 2 );
+		INT16 sRR = (INT16)( sX + BIVOUAC_PANEL_CELL_WIDTH - 2 );
+		INT16 sRB = (INT16)( sY + BIVOUAC_PANEL_CELL_HEIGHT - 2 );
+
+		// light dark tint over the slot cell (was 45,10,10 - too heavy)
+		ColorFillVideoSurfaceArea( guiSAVEBUFFER, sRX, sRY, sRR, sRB, Get16BPPColor( FROMRGB( 70, 30, 25 ) ) );
+
+		// dim red grid: 1px horizontal lines every 5px
+		for( INT16 sGY = sRY; sGY < sRB; sGY += 5 )
+		{
+			ColorFillVideoSurfaceArea( guiSAVEBUFFER, sRX, sGY, sRR, (INT16)( sGY + 1 ), usBivouacGrid );
+		}
+
+		// dim red grid: 1px vertical lines every 5px
+		for( INT16 sGX = sRX; sGX < sRR; sGX += 5 )
+		{
+			ColorFillVideoSurfaceArea( guiSAVEBUFFER, sGX, sRY, (INT16)( sGX + 1 ), sRB, usBivouacGrid );
+		}
 	}
 
 	// items
@@ -7298,6 +7339,12 @@ static void BivouacPanelSlotsMoveCallback( MOUSE_REGION * pRegion, INT32 iReason
 {
 	INT32 iCounter = MSYS_GetRegionUserData( pRegion, 0 );
 
+	// disabled slots: no hover highlight at all
+	if( BivouacSlotDisabled( iCounter ) )
+	{
+		return;
+	}
+
 	if( iReason & MSYS_CALLBACK_REASON_GAIN_MOUSE )
 	{
 		if( gpItemPointer == NULL )
@@ -7322,6 +7369,19 @@ static void BivouacPanelSlotsCallback( MOUSE_REGION * pRegion, INT32 iReason )
 {
 	INT32 iCounter = MSYS_GetRegionUserData( pRegion, 0 );
 	WORLDITEM *pWI = &( pBivouacPanelList[ iCounter ] );
+
+	// SQUAD_BIVOUAC: disabled slots do not react to clicks at all.
+	// An exception is a cursor item over a disabled slot: show WHY it is rejected.
+	if( BivouacSlotDisabled( iCounter ) )
+	{
+		if( ( iReason & MSYS_CALLBACK_REASON_LBUTTON_UP ) &&
+			gpItemPointer != NULL && gpItemPointer->exists( ) )
+		{
+			ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, gzLateLocalizedString[ 76 ] );
+		}
+
+		return;
+	}
 
 	// valid selected character required for all interactions
 	if( bSelectedInfoChar == -1 || gCharactersList[ bSelectedInfoChar ].fValid == FALSE )
@@ -7632,6 +7692,18 @@ static void BivouacPanelSlotsCallback( MOUSE_REGION * pRegion, INT32 iReason )
 				if( gpItemPointer->exists( ) == false )
 				{
 					MAPEndItemPointer( );
+				}
+				else
+				{
+					// swap happened: the cursor now holds the item from the bivouac slot.
+					// Update the cursor graphic - the sector inventory path does exactly
+					// this after PlaceObjectInInventoryStash (mapscreen inven click code)
+					guiExternVo = GetInterfaceGraphicForItem( &( Item[ gpItemPointer->usItem ] ) );
+					gusExternVoSubIndex = g_bUsePngItemImages ? 0 : Item[ gpItemPointer->usItem ].ubGraphicNum;
+
+					fMapInventoryItem = TRUE;
+					MSYS_ChangeRegionCursor( &gMPanelRegion, EXTERN_CURSOR );
+					SetCurrentCursorFromDatabase( EXTERN_CURSOR );
 				}
 			}
 
