@@ -707,6 +707,9 @@
     <ClCompile Include="XML_Keys.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="XML_BivouacSlots.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="XML_Locks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
