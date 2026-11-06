@@ -7885,8 +7885,26 @@ static void BivouacPanelDropAllBtn( GUI_BUTTON *btn, INT32 reason )
 
 			if( SectorSquadIsIn( (INT8)iSquadID, &sX, &sY, &bZ ) )
 			{
-				// gridno -1 => random spot / entry point, resolved inside DumpToFloor
-				SQBM().DumpToFloor( iSquadID, sX, sY, bZ, -1 );
+				// SQUAD_BIVOUAC: anchor the drop at the selected merc's position - the player
+				// expects the items at the merc's feet, not at a random spot / map center.
+				// DumpToFloor resolves the anchor to the nearest reachable tile (loaded
+				// sector); for an unloaded sector the position goes into the temp file as is.
+				// NOTE: GetMercAnchorGridNo also works on the map screen, where sGridNo is
+				// NOWHERE - it falls back to sInsertionGridNo (last placement position).
+				INT32 sAnchorGridNo = -1;
+
+				if( bSelectedInfoChar != -1 && gCharactersList[ bSelectedInfoChar ].fValid )
+				{
+					SOLDIERTYPE* pSoldier = MercPtrs[ gCharactersList[ bSelectedInfoChar ].usSolID ];
+
+					if( pSoldier != NULL && pSoldier->bActive &&
+						pSoldier->sSectorX == sX && pSoldier->sSectorY == sY && pSoldier->bSectorZ == bZ )
+					{
+						sAnchorGridNo = SQBM().GetMercAnchorGridNo( pSoldier );
+					}
+				}
+
+				SQBM().DumpToFloor( iSquadID, sX, sY, bZ, sAnchorGridNo );
 
 				ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, gzLateLocalizedString[ 68 ] );
 

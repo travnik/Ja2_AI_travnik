@@ -27,6 +27,7 @@
 	#include "Game Clock.h"				// PauseGame(), LockPauseState()
 	#include "Map Screen Interface Map.h"	// bSelectedInfoChar, gCharactersList
 	#include "Map Screen Interface Map Inventory.h"	// fShowMapInventoryPool, pInventoryPoolList
+	#include "strategic.h"				// INSERTION_CODE_GRIDNO
 
 // SQUAD_BIVOUAC: bivouac panel stash lives in Map Screen Interface Map Inventory.cpp
 // (extern declarations are placed at the dump site, near their only use)
@@ -329,6 +330,16 @@ void SquadBivouacManager::DumpToFloor( INT32 iSquadID, INT16 sMapX, INT16 sMapY,
 			{
 				sDropGridNo = RandomGridNo( );
 			}
+
+			// SQUAD_BIVOUAC: snap to the nearest reachable tile - items must not sink in
+			// water or land inside a wall (see DumpToFloor)
+			{
+				INT32 sSafeGridNo = FindNearestAvailableGridNoForItem( sDropGridNo, 10 );
+				if ( !TileIsOutOfBounds( sSafeGridNo ) )
+				{
+					sDropGridNo = sSafeGridNo;
+				}
+			}
 			wi.sGridNo = sDropGridNo;
 		}
 		else
@@ -421,6 +432,20 @@ void SquadBivouacManager::DumpToFloor( INT32 iSquadID, INT16 sMapX, INT16 sMapY,
 			sDropGridNo = RandomGridNo();
 		}
 
+		// SQUAD_BIVOUAC: RandomGridNo() (and a merc's gridno received from a caller) is NOT
+		// passability-checked - an item dropped on deep water sinks (AddItemToPool deletes
+		// items whose Item[].sinks is set) or lands inside a wall/roof where the player
+		// cannot pick it up. Snap the anchor to the nearest reachable tile first; if the
+		// snap fails (isolated spot), keep the original gridno so AddItemToPool's own
+		// fallback logic applies.
+		{
+			INT32 sSafeGridNo = FindNearestAvailableGridNoForItem( sDropGridNo, 10 );
+			if ( !TileIsOutOfBounds( sSafeGridNo ) )
+			{
+				sDropGridNo = sSafeGridNo;
+			}
+		}
+
 		for ( UINT32 i = 0; i < BIVOUAC_NUM_SLOTS; ++i )
 		{
 			OBJECTTYPE* pObj = &(m_Bivouac[iIndex].Slots[i]);
@@ -500,11 +525,49 @@ void SquadBivouacManager::DumpToFloor( INT32 iSquadID, INT16 sMapX, INT16 sMapY,
 	}
 }
 
+// SQUAD_BIVOUAC: best-known drop anchor for a merc standing in a sector.
+// While the tactical map is NOT loaded, soldier->sGridNo is NOWHERE (it is reset when
+// the soldier is removed from the tactical sector), so the anchor must come from
+// sInsertionGridNo - the position where the merc was last placed in this sector and
+// where he will spawn on re-entry. Returns -1 if nothing valid is known.
+INT32 SquadBivouacManager::GetMercAnchorGridNo( SOLDIERTYPE* pSoldier )
+{
+	if ( pSoldier == NULL || !pSoldier->bActive )
+	{
+		return( -1 );
+	}
+
+	// tactical map loaded: the real current position
+	if ( !TileIsOutOfBounds( pSoldier->sGridNo ) )
+	{
+		return( pSoldier->sGridNo );
+	}
+
+	// map screen: use the last tactical placement position (where the merc will spawn
+	// on re-entry - the sector entry code INSERTION_CODE_GRIDNO restores this position)
+	if ( !TileIsOutOfBounds( pSoldier->sInsertionGridNo ) )
+	{
+		return( pSoldier->sInsertionGridNo );
+	}
+
+	// last resort: explicit gridno insertion data
+	if ( pSoldier->ubStrategicInsertionCode == INSERTION_CODE_GRIDNO &&
+		 pSoldier->usStrategicInsertionData < MAX_MAP_POS )
+	{
+		return( (INT32)pSoldier->usStrategicInsertionData );
+	}
+
+	return( -1 );
+}
+
 // SQUAD_BIVOUAC: automatic dump when a squad loses its last member (dismissal, contract
 // expiry, death of the last merc). The items must stay in the sector - not vanish with
 // the squad. Sector is taken from the squad's current location; a squad between sectors
 // has no meaningful drop location, so the bivouac keeps its items in that edge case.
-void SquadBivouacManager::AutoDumpBivouacOnSquadLoss( INT32 iSquadID )
+// pLeavingSoldier (optional): the merc leaving the party. If he stands in the dump
+// sector, his position is used as the drop anchor (passability-resolved in DumpToFloor),
+// so the items land where the player expects them instead of a random spot.
+void SquadBivouacManager::AutoDumpBivouacOnSquadLoss( INT32 iSquadID, SOLDIERTYPE* pLeavingSoldier )
 {
 	if ( iSquadID < 0 || iSquadID >= NUMBER_OF_SQUADS )
 	{
@@ -549,7 +612,18 @@ void SquadBivouacManager::AutoDumpBivouacOnSquadLoss( INT32 iSquadID )
 		return;
 	}
 
-	DumpToFloor( iSquadID, sX, sY, bZ, -1 );
+	// SQUAD_BIVOUAC: anchor the drop at the leaving merc's position when he stands in the
+	// dump sector - DumpToFloor resolves it to a passable tile nearby (loaded sector) or
+	// uses it directly (unloaded sector temp-file + sweet-spot resolution on load).
+	// NOTE: GetMercAnchorGridNo also works on the map screen, where sGridNo is NOWHERE.
+	INT32 sAnchorGridNo = -1;
+	if ( pLeavingSoldier != NULL &&
+		 pLeavingSoldier->sSectorX == sX && pLeavingSoldier->sSectorY == sY && pLeavingSoldier->bSectorZ == bZ )
+	{
+		sAnchorGridNo = GetMercAnchorGridNo( pLeavingSoldier );
+	}
+
+	DumpToFloor( iSquadID, sX, sY, bZ, sAnchorGridNo );
 
 	ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, gzLateLocalizedString[68] );	// "The squad's bivouac has been emptied into the sector."
 }
@@ -869,8 +943,18 @@ void SquadBivouacManager::BivouacDisbandMessageBoxCallBack( UINT8 bExitValue )
 
 		if ( SectorSquadIsIn( (INT8)iSquadID, &sX, &sY, &bZ ) )
 		{
-			// gridno -1 => random/entry point, resolved inside DumpToFloor
-			m.DumpToFloor( iSquadID, sX, sY, bZ, -1 );
+			// SQUAD_BIVOUAC: anchor the drop at the leaving merc's position (the player
+			// expects the items at his feet) - fallback: random spot / entry point.
+			INT32 sAnchorGridNo = -1;
+
+			SOLDIERTYPE* pAnchor = MercPtrs[ m.m_usPendingDisbandSoldierID ];
+			if ( pAnchor != NULL && pAnchor->bActive &&
+				 pAnchor->sSectorX == sX && pAnchor->sSectorY == sY && pAnchor->bSectorZ == bZ )
+			{
+				sAnchorGridNo = m.GetMercAnchorGridNo( pAnchor );
+			}
+
+			m.DumpToFloor( iSquadID, sX, sY, bZ, sAnchorGridNo );
 
 			ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, gzLateLocalizedString[68] );	// "The squad's bivouac has been emptied into the sector."
 		}
@@ -1236,13 +1320,19 @@ BOOLEAN SquadBivouacManager::CanAnySlotAcceptItem( INT32 iSquadID, OBJECTTYPE* p
 //
 // Layout (fixed-size, forward compatible):
 //   UINT32  uiVersionMarker	- format marker (BIVOUAC_SAVE_FORMAT_VERSION)
+//   format v2+:
+//     UINT32  uiBlockSize	- total byte size of the block AFTER this field; unknown
+//                               future formats FileSeek over it instead of failing
 //   UINT32  uiNumSquads		- NUMBER_OF_SQUADS, sanity checked on load
 //   for each squad:
 //     UINT32 uiSlotCount		- BIVOUAC_NUM_SLOTS
 //     BIVOUAC_NUM_SLOTS x OBJECTTYPE::Save() (self-describing size per stack)
+//
+// v1 (savegame 152) has NO size field - those blocks cannot be seeked over; a mismatched
+// v1 marker still fails the load (v1 was only ever written by this dev branch).
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define BIVOUAC_SAVE_FORMAT_VERSION		1
+#define BIVOUAC_SAVE_FORMAT_VERSION		2
 
 BOOLEAN SquadBivouacManager::Save( HWFILE hFile )
 {
@@ -1250,6 +1340,7 @@ BOOLEAN SquadBivouacManager::Save( HWFILE hFile )
 	UINT32	uiVersionMarker = BIVOUAC_SAVE_FORMAT_VERSION;
 	UINT32	uiNumSquads = (UINT32)NUMBER_OF_SQUADS;
 	UINT32	uiSlotCount = (UINT32)BIVOUAC_NUM_SLOTS;
+	INT32	sBlockSizePos = -1;
 
 	// format marker
 	FileWrite( hFile, &uiVersionMarker, sizeof( UINT32 ), &uiNumBytesWritten );
@@ -1257,6 +1348,19 @@ BOOLEAN SquadBivouacManager::Save( HWFILE hFile )
 	{
 		return( FALSE );
 	}
+
+	// SQUAD_BIVOUAC: reserve the block-size field so an UNKNOWN future format can be
+	// skipped safely (FileSeek) instead of desyncing the rest of the savegame.
+	// We write the real size afterwards (seek back, write, seek to end).
+	sBlockSizePos = FileGetPos( hFile );
+	uiNumBytesWritten = 0;
+	FileWrite( hFile, &uiNumBytesWritten, sizeof( UINT32 ), &uiNumBytesWritten );	// placeholder
+	if ( uiNumBytesWritten != sizeof( UINT32 ) )
+	{
+		return( FALSE );
+	}
+
+	INT32 sBlockStartPos = FileGetPos( hFile );
 
 	// squad count (sanity check on load)
 	FileWrite( hFile, &uiNumSquads, sizeof( UINT32 ), &uiNumBytesWritten );
@@ -1284,6 +1388,27 @@ BOOLEAN SquadBivouacManager::Save( HWFILE hFile )
 		}
 	}
 
+	// patch the real block size (everything after the size field)
+	INT32 sBlockEndPos = FileGetPos( hFile );
+	UINT32 uiBlockSize = (UINT32)( sBlockEndPos - sBlockStartPos );
+
+	if ( !FileSeek( hFile, sBlockSizePos, FILE_SEEK_FROM_START ) )
+	{
+		return( FALSE );
+	}
+
+	FileWrite( hFile, &uiBlockSize, sizeof( UINT32 ), &uiNumBytesWritten );
+	if ( uiNumBytesWritten != sizeof( UINT32 ) )
+	{
+		return( FALSE );
+	}
+
+	// return to the end of the block so the caller's stream position stays correct
+	if ( !FileSeek( hFile, sBlockEndPos, FILE_SEEK_FROM_START ) )
+	{
+		return( FALSE );
+	}
+
 	return( TRUE );
 }
 
@@ -1291,6 +1416,7 @@ BOOLEAN SquadBivouacManager::Load( HWFILE hFile )
 {
 	UINT32	uiNumBytesRead = 0;
 	UINT32	uiVersionMarker = 0;
+	UINT32	uiBlockSize = 0;
 	UINT32	uiNumSquads = 0;
 	UINT32	uiSlotCount = 0;
 
@@ -1306,10 +1432,43 @@ BOOLEAN SquadBivouacManager::Load( HWFILE hFile )
 	{
 		return( FALSE );
 	}
-	if ( uiVersionMarker != BIVOUAC_SAVE_FORMAT_VERSION )
+
+	// SQUAD_BIVOUAC: a future format (higher marker) MUST NOT desync the savegame read -
+	// the caller reads more blocks after this one. v2+ blocks carry their total size, so
+	// an unknown future format is skipped with FileSeek (bivouacs stay empty).
+	// v1 (savegame 152) is a KNOWN format without the size field - read it fully.
+	if ( uiVersionMarker != 1 && uiVersionMarker != BIVOUAC_SAVE_FORMAT_VERSION )
 	{
-		// unknown future/older format: refuse instead of corrupting inventory
-		return( FALSE );
+		// future format: read the size field and seek over the whole block
+		FileRead( hFile, &uiBlockSize, sizeof( UINT32 ), &uiNumBytesRead );
+		if ( uiNumBytesRead != sizeof( UINT32 ) )
+		{
+			return( FALSE );
+		}
+
+		// sanity: reject absurd sizes (corrupted file) instead of seeking into nowhere
+		if ( uiBlockSize == 0 || uiBlockSize > 64 * 1024 * 1024 )
+		{
+			return( FALSE );
+		}
+
+		if ( !FileSeek( hFile, uiBlockSize, FILE_SEEK_FROM_CURRENT ) )
+		{
+			return( FALSE );
+		}
+
+		// bivouacs stay empty (already wiped) - but the savegame itself loads fine
+		return( TRUE );
+	}
+
+	// v1 has no size field; v2 carries it (read for layout uniformity)
+	if ( uiVersionMarker >= 2 )
+	{
+		FileRead( hFile, &uiBlockSize, sizeof( UINT32 ), &uiNumBytesRead );
+		if ( uiNumBytesRead != sizeof( UINT32 ) )
+		{
+			return( FALSE );
+		}
 	}
 
 	// squad count

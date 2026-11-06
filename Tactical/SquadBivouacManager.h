@@ -134,7 +134,14 @@ public:
 	// (dismissal / contract expiry / death). Dumps the bivouac into the squad's sector
 	// (loaded or unloaded) and shows the standard [68] message. Does nothing for an
 	// empty bivouac or a squad that is between sectors (no meaningful drop location).
-	void	AutoDumpBivouacOnSquadLoss( INT32 iSquadID );
+	void	AutoDumpBivouacOnSquadLoss( INT32 iSquadID, SOLDIERTYPE* pLeavingSoldier = NULL );
+
+	// SQUAD_BIVOUAC: best-known drop anchor for a merc standing in a sector.
+	// While the tactical map is NOT loaded, soldier->sGridNo is NOWHERE (it is reset when
+	// the soldier is removed from the tactical sector), so the anchor must come from
+	// sInsertionGridNo - the position where the merc was last placed in this sector and
+	// where he will spawn on re-entry. Returns -1 if nothing valid is known.
+	INT32	GetMercAnchorGridNo( SOLDIERTYPE* pSoldier );
 
 	////////////////////////////////////////////////////////////////////////////////////////////
 	// Balance / penalties

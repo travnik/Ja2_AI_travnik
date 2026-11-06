@@ -949,7 +949,7 @@ BOOLEAN StrategicRemoveMerc( SOLDIERTYPE *pSoldier )
 		if( NumberOfPeopleInSquad( bSquad ) == 1 &&
 			SQBM().IsEmpty( bSquad ) == FALSE )
 		{
-			SQBM().AutoDumpBivouacOnSquadLoss( bSquad );
+			SQBM().AutoDumpBivouacOnSquadLoss( bSquad, pSoldier );
 		}
 	}
 

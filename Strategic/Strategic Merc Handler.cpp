@@ -101,7 +101,7 @@ void StrategicHandlePlayerTeamMercDeath( SOLDIERTYPE *pSoldier )
 
 		if( iLive <= 1 && SQBM().IsEmpty( bSquad ) == FALSE )
 		{
-			SQBM().AutoDumpBivouacOnSquadLoss( bSquad );
+			SQBM().AutoDumpBivouacOnSquadLoss( bSquad, pSoldier );
 		}
 	}
 
