@@ -272,8 +272,14 @@ extern void InternalMAPBeginItemPointer( SOLDIERTYPE *pSoldier );
 #define BIVOUAC_PANEL_ROW_STEP					26
 #define BIVOUAC_PANEL_START_Y					(PLAYER_INFO_Y + 34)	// below the two-line header, portrait area untouched
 #define BIVOUAC_PANEL_END_Y						(INV_INTERFACE_START_Y - 4)
-#define BIVOUAC_PANEL_BTN_RESERVE				36		// bottom strip reserved for the Done button
-#define BIVOUAC_PANEL_BTN_WIDTH					70
+#define BIVOUAC_PANEL_BTN_RESERVE				36		// bottom strip reserved for the Done/drop-all buttons
+#define BIVOUAC_PANEL_BTN_ROW_HEIGHT			28		// height of the button strip (largest button sprite)
+#define BIVOUAC_PANEL_DONE_BTN_WIDTH			35		// actual sprite size of itemdescdonebutton.sti
+#define BIVOUAC_PANEL_DONE_BTN_HEIGHT			27
+#define BIVOUAC_PANEL_DROPALL_BTN_WIDTH			28		// actual sprite size of sector_inventory_buttons.sti icon
+#define BIVOUAC_PANEL_DROPALL_BTN_HEIGHT		28
+#define BIVOUAC_PANEL_BTN_GAP					6		// gap between the drop-all and Done buttons
+#define BIVOUAC_PANEL_BTNS_TOTAL_WIDTH			( BIVOUAC_PANEL_DROPALL_BTN_WIDTH + BIVOUAC_PANEL_BTN_GAP + BIVOUAC_PANEL_DONE_BTN_WIDTH )
 #define BIVOUAC_PANEL_GRID_WIDTH				((BIVOUAC_PANEL_COLS - 1) * BIVOUAC_PANEL_COL_STEP + BIVOUAC_PANEL_CELL_WIDTH)
 #define BIVOUAC_PANEL_GRID_HEIGHT				((BIVOUAC_PANEL_ROWS - 1) * BIVOUAC_PANEL_ROW_STEP + BIVOUAC_PANEL_CELL_HEIGHT)
 #define BIVOUAC_PANEL_BORDER					2
@@ -6827,6 +6833,22 @@ static void BivouacPanelGetSlotCoords( INT32 iCounter, INT16 *psX, INT16 *psY )
 	*psY = (INT16)( sGridY + ( ( iCounter / BIVOUAC_PANEL_COLS ) * BIVOUAC_PANEL_ROW_STEP ) );
 }
 
+// SQUAD_BIVOUAC: Y of the bottom button row, centered in the strip between the bottom of
+// the slot grid and the bottom edge of the panel. The grid bottom must be computed the
+// same way BivouacPanelGetSlotCoords does it.
+static INT16 BivouacPanelGetButtonsY( void )
+{
+	INT32 sPanelWidth = MAP_BORDER_X - 2 * 8;
+	INT32 sAvailHeight = ( BIVOUAC_PANEL_END_Y - BIVOUAC_PANEL_BTN_RESERVE ) - BIVOUAC_PANEL_START_Y;
+
+	INT32 sGridBottom = BIVOUAC_PANEL_START_Y + __max( 0, ( sAvailHeight - BIVOUAC_PANEL_GRID_HEIGHT ) / 2 )
+		+ BIVOUAC_PANEL_GRID_HEIGHT;
+
+	INT32 sStripHeight = BIVOUAC_PANEL_END_Y - sGridBottom;
+
+	return (INT16)( sGridBottom + __max( 0, ( sStripHeight - BIVOUAC_PANEL_BTN_ROW_HEIGHT ) / 2 ) );
+}
+
 BOOLEAN IsBivouacPanelAllowedForSelectedChar( void )
 {
 	if( fShowBivouacPanel )
@@ -6926,10 +6948,19 @@ static void BivouacPanelCreateSlots( void )
 		MSYS_SetRegionUserData( &BivouacPanelSlots[ iCounter ], 0, iCounter );
 	}
 
-	// done button, at the BOTTOM of the panel (like the map screen item description Done button)
+	// done button, at the BOTTOM of the panel (like the map screen item description Done button).
+	// SQUAD_BIVOUAC: the drop-all and Done buttons form one centered group under the item
+	// slots: [drop-all 28px] gap [Done 35px], group total 69px -> x offset = (261 - 69) / 2 = 96.
+	// The panel center (PLAYER_INFO_X + MAP_BORDER_X / 2) equals the item slot grid center,
+	// because the grid uses the same centering formula (see BivouacPanelGetSlotCoords).
+	// Vertically the group is centered between the bottom slot row and the panel bottom edge;
+	// each button centers its own sprite height (28 vs 27) on the same strip middle.
+	INT16 sBtnMid = BivouacPanelGetButtonsY( ) + BIVOUAC_PANEL_BTN_ROW_HEIGHT / 2;
+	INT16 sBtnsX = (INT16)( PLAYER_INFO_X + ( MAP_BORDER_X - BIVOUAC_PANEL_BTNS_TOTAL_WIDTH ) / 2 );
+
 	guiBivouacPanelDoneButtonImage = LoadButtonImage( "INTERFACE\\itemdescdonebutton.sti", -1, 0, -1, 1, -1 );
 	guiBivouacPanelDoneButton = QuickCreateButton( guiBivouacPanelDoneButtonImage,
-		(INT16)( PLAYER_INFO_X + ( MAP_BORDER_X - BIVOUAC_PANEL_BTN_WIDTH ) / 2 ), (INT16)( BIVOUAC_PANEL_END_Y - 28 ),
+		(INT16)( sBtnsX + BIVOUAC_PANEL_DROPALL_BTN_WIDTH + BIVOUAC_PANEL_BTN_GAP ), (INT16)( sBtnMid - BIVOUAC_PANEL_DONE_BTN_HEIGHT / 2 ),
 		BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
 		(GUI_CALLBACK)BtnGenericMouseMoveButtonCallback, (GUI_CALLBACK)BivouacPanelDoneBtn );
 
@@ -6939,7 +6970,7 @@ static void BivouacPanelCreateSlots( void )
 	// Reuses the sector inventory's stack-and-merge icon (arrows merging into one slot).
 	guiBivouacPanelDropAllButtonImage = LoadButtonImage( "INTERFACE\\sector_inventory_buttons.sti", 16, 14, -1, 15, -1 );
 	guiBivouacPanelDropAllButton = QuickCreateButton( guiBivouacPanelDropAllButtonImage,
-		(INT16)( PLAYER_INFO_X + ( MAP_BORDER_X - BIVOUAC_PANEL_BTN_WIDTH ) / 2 - 34 ), (INT16)( BIVOUAC_PANEL_END_Y - 28 ),
+		sBtnsX, (INT16)( sBtnMid - BIVOUAC_PANEL_DROPALL_BTN_HEIGHT / 2 ),
 		BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
 		(GUI_CALLBACK)BtnGenericMouseMoveButtonCallback, (GUI_CALLBACK)BivouacPanelDropAllBtn );
 

@@ -311,8 +311,8 @@ CanItemFitInBivouacSlot =
 
 | Кнопка | Графика | Позиция | Действие |
 |---|---|---|---|
-| Done | `INTERFACE\itemdescdonebutton.sti` | низ панели, центр | `CloseBivouacPanel(TRUE)` |
-| «Выгрузить всё» | `sector_inventory_buttons.sti` idx 16/14/15 (иконка Stack&Merge) | низ панели, слева от Done (−34px) | `BivouacPanelDropAllBtn` → `DumpToFloor` активного отряда |
+| Done | `INTERFACE\itemdescdonebutton.sti` | низ панели, в группе по центру под слотами | `CloseBivouacPanel(TRUE)` |
+| «Выгрузить всё» | `sector_inventory_buttons.sti` idx 16/14/15 (иконка Stack&Merge) | низ панели, слева от Done, группа центрирована: [28px] + 6px + [35px], старт = (MAP_BORDER_X − 69) / 2 | `BivouacPanelDropAllBtn` → `DumpToFloor` активного отряда |
 
 ### Кнопка бивуака в тулбаре секторного инвентаря
 
