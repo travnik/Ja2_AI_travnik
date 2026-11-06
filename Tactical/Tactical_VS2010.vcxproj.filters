@@ -566,6 +566,9 @@
     <ClCompile Include="XML_Magazine.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="XML_BivouacSlots.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="XML_MercStartingGear.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
