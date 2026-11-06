@@ -6912,6 +6912,7 @@ STR16 gzLateLocalizedString[] =
 	L"'%s': stack does not fit (in slot %d, capacity %d).",	// 79 SQUAD_BIVOUAC: stack overflow (name, current stack count, capacity)
 	L"Items are left in the squad's bivouac: at least %d mercs are required to move it.",	// 80 SQUAD_BIVOUAC: squad with non-empty bivouac blocked from moving (min mercs)
 	L"Drop the entire bivouac contents into the sector.",	// 81 SQUAD_BIVOUAC: drop-all button tooltip
+	L"Open/close the squad's bivouac.",	// 82 SQUAD_BIVOUAC: sector inventory toolbar bivouac toggle tooltip
 };
 
 // HEADROCK HAM 3.5: Added sector name

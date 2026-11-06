@@ -441,6 +441,7 @@ INT32 GetTotalNumberOfItemsInSectorStash( void );
 // Flugente: gear templates
 void MapInventoryWriteEquipmentTemplate(GUI_BUTTON* btn, INT32 reason);
 void MapInventoryReadEquipmentTemplate(GUI_BUTTON* btn, INT32 reason);
+void MapInventoryBivouacToggleBtn(GUI_BUTTON* btn, INT32 reason);
 
 void HandleMapSectorInventory( void );
 void ResetMapSectorInventoryPoolHighLights( void );
@@ -2086,6 +2087,16 @@ void CreateMapInventoryButtons(void)
 	guiMapInvenFilterButton[11] = QuickCreateButton(guiMapInvenFilterButtonImage[11], INVEN_POOL_X + 406 + xResOffset, INVEN_POOL_Y + 10 + yResOffset,
 		BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
 		NULL, (GUI_CALLBACK)MapInventoryReadEquipmentTemplate);
+
+	// SQUAD_BIVOUAC: open/close the squad bivouac panel.
+	// Reuses the sector inventory zoom icon (magnifier) - it visually reads as "look inside".
+	// The button is only clickable when a bivouac-capable character is selected.
+	guiMapInvenFilterButtonImage[12] = LoadButtonImage("INTERFACE\\sector_inventory_buttons.sti", 0, 0, -1, 1, -1);
+	guiMapInvenFilterButton[12] = QuickCreateButton(guiMapInvenFilterButtonImage[12], INVEN_POOL_X + 441 + xResOffset, INVEN_POOL_Y + 10 + yResOffset,
+		BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
+		NULL, (GUI_CALLBACK)MapInventoryBivouacToggleBtn);
+
+	SetButtonFastHelpText(guiMapInvenFilterButton[12], gzLateLocalizedString[ 82 ]);
 	return;
 }
 
@@ -3626,6 +3637,19 @@ void HandleButtonStatesWhileMapInventoryActive( void )
 		DisableButton( guiMapInvenSortButton[ 1 ] );
 		DisableButton( guiMapInvenSortButton[ 2 ] );
 		DisableButton( guiMapInvenSortButton[ 3 ] );
+	}
+
+	// SQUAD_BIVOUAC: the bivouac toggle button is enabled only when opening the bivouac
+	// is currently allowed (same checks as the 'B' hotkey: no cursor item, valid squad
+	// character, squad not moving, peaceful sector, enough live mercs). While the panel
+	// is open the button must stay enabled so it can close the panel again.
+	if( fShowBivouacPanel || IsBivouacPanelAllowedForSelectedChar( ) )
+	{
+		EnableButton( guiMapInvenFilterButton[ 12 ] );
+	}
+	else
+	{
+		DisableButton( guiMapInvenFilterButton[ 12 ] );
 	}
 }
 
@@ -6739,6 +6763,43 @@ void MapInventoryReadEquipmentTemplate(GUI_BUTTON* btn, INT32 reason)
 			else
 			{
 				DoScreenIndependantMessageBox(szGearTemplateText[2], MSG_BOX_FLAG_OK, NULL);
+			}
+		}
+	}
+}
+
+// SQUAD_BIVOUAC: sector inventory toolbar button - open/close the bivouac panel.
+// Mirrors the 'B' hotkey handler in mapscreen.cpp: close when open, otherwise run the
+// full access check for the selected character and open the panel for his squad.
+void MapInventoryBivouacToggleBtn( GUI_BUTTON* btn, INT32 reason )
+{
+	if( reason & MSYS_CALLBACK_REASON_LBUTTON_DWN )
+	{
+		if( !( btn->uiFlags & ( BUTTON_CLICKED_ON ) ) )
+		{
+			btn->uiFlags |= ( BUTTON_CLICKED_ON );
+		}
+	}
+
+	if( reason & MSYS_CALLBACK_REASON_LBUTTON_UP )
+	{
+		if( btn->uiFlags & ( BUTTON_CLICKED_ON ) )
+		{
+			btn->uiFlags &= ~( BUTTON_CLICKED_ON );
+
+			if( fShowBivouacPanel )
+			{
+				// close: stash stored back via CreateDestroyBivouacPanel
+				CloseBivouacPanel( TRUE );
+			}
+			else if( IsBivouacPanelAllowedForSelectedChar( ) )
+			{
+				SQBM().SetBivouacUIMode( TRUE );
+				SQBM().SetActiveUISquadID( SQBM().GetBivouacUISquadID( ) );
+
+				fShowBivouacPanel = TRUE;
+
+				ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, gzLateLocalizedString[ 69 ] );
 			}
 		}
 	}

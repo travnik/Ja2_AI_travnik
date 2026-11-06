@@ -6909,6 +6909,7 @@ STR16 gzLateLocalizedString[] =
 	L"«%s»: не помещается в слот (в слоте %d, вместимость %d).",	// 79 SQUAD_BIVOUAC: stack overflow (name, current stack count, capacity)
 	L"В бивуаке отряда остались предметы: для перемещения нужно минимум %d бойцов в отряде.",	// 80 SQUAD_BIVOUAC: squad with non-empty bivouac blocked from moving (min mercs)
 	L"Выгрузить всё содержимое бивуака в сектор.",	// 81 SQUAD_BIVOUAC: drop-all button tooltip
+	L"Открыть/закрыть бивуак отряда.",	// 82 SQUAD_BIVOUAC: sector inventory toolbar bivouac toggle tooltip
 };
 
 // HEADROCK HAM 3.5: Added sector name

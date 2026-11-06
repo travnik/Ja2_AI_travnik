@@ -15624,6 +15624,45 @@ void HandleNewDestConfirmation( INT16 sMapX, INT16 sMapY )
 	}
 	else
 	{
+		// SQUAD_BIVOUAC: a squad with a non-empty bivouac may not have enough live mercs
+		// to move. The waypoint guard in AddWaypointToPGroup() will reject the route right
+		// after this, so replace the misleading "route confirmed" message with the real
+		// localized error - both in the map message log and as a map overlay.
+		BOOLEAN fBivouacMoveBlocked = FALSE;
+
+		if( bSelectedDestChar != -1 )
+		{
+			SOLDIERTYPE *pBivouacSoldier = MercPtrs[ gCharactersList[ bSelectedDestChar ].usSolID ];
+
+			if( pBivouacSoldier->bAssignment < ON_DUTY && !pBivouacSoldier->flags.fBetweenSectors )
+			{
+				// SQUAD_BIVOUAC: defined in Squads.cpp, extern'd locally like other users do
+				extern INT8 SquadMovementGroups[ ];
+
+				INT32 iBivouacSquad = pBivouacSoldier->bAssignment;
+
+				if( SquadMovementGroups[ iBivouacSquad ] != 0 &&
+					SQBM().CanSquadMoveWithBivouac( iBivouacSquad ) == FALSE )
+				{
+					fBivouacMoveBlocked = TRUE;
+				}
+			}
+		}
+
+		if( fBivouacMoveBlocked )
+		{
+			// persistent map message log entry (ScreenMsg -> MSG_INTERFACE writes into the
+			// scrolling log at the bottom of the map screen)
+			ScreenMsg( FONT_MCOLOR_LTRED, MSG_INTERFACE, gzLateLocalizedString[ 80 ],
+				gGameExternalOptions.usBivouacMoveMinMercs );
+
+			// transient overlay on the map itself (replaces "Travel route confirmed")
+			MapScreenMessage( FONT_MCOLOR_LTRED, MSG_MAP_UI_POSITION_MIDDLE, gzLateLocalizedString[ 80 ],
+				gGameExternalOptions.usBivouacMoveMinMercs );
+
+			return;
+		}
+
 		RandomAwakeSelectedMercConfirmsStrategicMove( );
 
 		// tell player the route was CONFIRMED

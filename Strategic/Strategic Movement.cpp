@@ -554,7 +554,10 @@ BOOLEAN AddWaypointToPGroup( GROUP* pGroup, UINT8 ubSectorX, UINT8 ubSectorY ) /
 			{
 				if( SQBM().CanSquadMoveWithBivouac( iSquad ) == FALSE )
 				{
-					ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, gzLateLocalizedString[ 80 ],
+					// SQUAD_BIVOUAC: MapScreenMessage instead of ScreenMsg - the strategic
+					// movement code can run outside the map screen, and on the map screen
+					// MapScreenMessage is what places the text into the map message log
+					MapScreenMessage( FONT_MCOLOR_LTYELLOW, MSG_MAP_UI_POSITION_MIDDLE, gzLateLocalizedString[ 80 ],
 						gGameExternalOptions.usBivouacMoveMinMercs );
 					return( FALSE );
 				}
