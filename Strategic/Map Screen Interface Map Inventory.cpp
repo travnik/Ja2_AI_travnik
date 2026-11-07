@@ -47,7 +47,7 @@
 #include "Campaign Types.h"	// added by Flugente
 
 // Flugente: gear templates
-#include "GearTemplate.h" // ���������� ����� ����� ��������� ��������
+#include "GearTemplate.h" // Подключаем новый класс менеджера шаблонов
 extern void EquipmentListMenu();
 
 //forward declarations of common classes to eliminate includes
@@ -2106,6 +2106,9 @@ void CreateMapInventoryButtons(void)
 	return;
 }
 
+
+// Flugente: 
+extern void EquipmentListMenuCancel();
 
 // Flugente: 
 extern void EquipmentListMenuCancel();

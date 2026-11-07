@@ -312,6 +312,7 @@
     <ClInclude Include="VehicleMenu.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="CraftInfo.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Air Raid.cpp">
@@ -758,5 +759,6 @@
     <ClCompile Include="VehicleMenu.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="CraftInfo.cpp" />
   </ItemGroup>
 </Project>
