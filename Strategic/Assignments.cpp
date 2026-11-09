@@ -205,7 +205,7 @@ INT32 ghSnitchBox = -1;
 INT32 ghSnitchToggleBox = -1;
 INT32 ghSnitchSectorBox = -1;
 
-// ����������-������ ��� ������������� � ������������� ������� ����
+// Переменные-прокси для совместимости с оригинальными файлами игры
 INT32 ghRadioBox = -1;
 INT32 ghRadioSectorBox = -1;
 INT32 ghRadioNumberBox = -1;
@@ -2896,8 +2896,8 @@ UINT8 CalculateRepairPointsForRepairman(SOLDIERTYPE *pSoldier, UINT16 *pusMaxPts
 	// calculate normal repair rate - what it would be if his stats were "normal" (ignoring drugs, fatigue, equipment condition)
 	// and equipment was not a hindrance
 	// r8050
-	INT16 mechanical = (pSoldier->stats.bMechanical * (100 + pSoldier->GetBackgroundValue( BG_MECHANICAL ))) / 100;
-	INT16 dexterity  = (pSoldier->stats.bDexterity * (100 + pSoldier->GetBackgroundValue( BG_DEXTERITY ))) / 100;
+	INT16 mechanical = pSoldier->stats.bMechanical * (100 + pSoldier->GetBackgroundValue( BG_MECHANICAL )) / 100;
+	INT16 dexterity  = pSoldier->stats.bDexterity * (100 + pSoldier->GetBackgroundValue( BG_DEXTERITY )) / 100;
 	*pusMaxPts = (mechanical * dexterity * (100 + (5 * pSoldier->stats.bExpLevel))) / (gGameExternalOptions.ubRepairRateDivisor * gGameExternalOptions.ubAssignmentUnitsPerDay);
 	//*pusMaxPts = ( pSoldier->stats.bMechanical * pSoldier->stats.bDexterity * (100 + ( 5 * pSoldier->stats.bExpLevel) ) ) / ( gGameExternalOptions.ubRepairRateDivisor * gGameExternalOptions.ubAssignmentUnitsPerDay );
 
@@ -3001,11 +3001,11 @@ UINT32 CalculateInterrogationValue(SOLDIERTYPE *pSoldier, UINT16 *pusMaxPts )
 	// adjust for threatening value
 	INT32 threatenvalue = CalcThreateningEffectiveness( pSoldier->ubProfile ) * gMercProfiles[pSoldier->ubProfile].usApproachFactor[2] ;
 	
-	threatenvalue = (threatenvalue * (100 + pSoldier->GetBackgroundValue(BG_PERC_APPROACH_THREATEN))) / 100;
+	threatenvalue = threatenvalue * (100 + pSoldier->GetBackgroundValue(BG_PERC_APPROACH_THREATEN)) / 100;
 		
 	usInterrogationPoints *= threatenvalue;
 	
-	usInterrogationPoints = (usInterrogationPoints * (100 + pSoldier->GetBackgroundValue(BG_PERC_INTERROGATION))) / 100;
+	usInterrogationPoints = usInterrogationPoints * (100 + pSoldier->GetBackgroundValue(BG_PERC_INTERROGATION)) / 100;
 	
 	UINT16 performancemodifier = 100;
 	for (UINT16 cnt = 0; cnt < NUM_FACILITY_TYPES; ++cnt)
@@ -3060,7 +3060,7 @@ UINT32 CalculatePrisonGuardValue(SOLDIERTYPE *pSoldier )
 		usValue += 25 * NUM_SKILL_TRAITS( pSoldier, MARTIALARTS_OT ) + 25 * NUM_SKILL_TRAITS( pSoldier, HANDTOHAND_OT ) + 10 * HAS_SKILL_TRAIT( pSoldier, KNIFING_OT );
 	}
 	
-	usValue = (usValue * (100 + max(0, pSoldier->GetBackgroundValue(BG_PERC_GUARD)))) / 100;
+	usValue = usValue * (100 + max(0, pSoldier->GetBackgroundValue(BG_PERC_GUARD))) / 100;
 	
 	// adjust for fatigue
 	ReducePointsForFatigue( pSoldier, &usValue );
@@ -3227,7 +3227,7 @@ UINT32 CalculateSnitchInterrogationValue(SOLDIERTYPE *pSoldier, UINT16 *pusMaxPt
 			friendlyvalue += 30;
 	}
 
-	friendlyvalue = (friendlyvalue * (100 + pSoldier->GetBackgroundValue(BG_PERC_APPROACH_FRIENDLY))) / 100;
+	friendlyvalue = friendlyvalue * (100 + pSoldier->GetBackgroundValue(BG_PERC_APPROACH_FRIENDLY)) / 100;
 
 	usInterrogationPoints *= friendlyvalue;
 
@@ -7270,8 +7270,8 @@ INT16 GetTownTrainPtsForCharacter( SOLDIERTYPE *pTrainer, UINT16 *pusMaxPts )
 
 	// calculate normal training pts - what it would be if his stats were "normal" (ignoring drugs, fatigue)
 	// r8050
-	INT16 wisdom	 = (pTrainer->stats.bWisdom * (100 + pTrainer->GetBackgroundValue( BG_WISDOM ))) / 100;
-	INT16 leadership = (pTrainer->stats.bLeadership * (100 + pTrainer->GetBackgroundValue( BG_LEADERSHIP ))) / 100;
+	INT16 wisdom	 = pTrainer->stats.bWisdom * (100 + pTrainer->GetBackgroundValue( BG_WISDOM )) / 100;
+	INT16 leadership = pTrainer->stats.bLeadership * (100 + pTrainer->GetBackgroundValue( BG_LEADERSHIP )) / 100;
 
 	*pusMaxPts = (wisdom + leadership + (10 * pTrainer->stats.bExpLevel)) * gGameExternalOptions.ubTownMilitiaTrainingRate;
 	//*pusMaxPts = ( pTrainer->stats.bWisdom + pTrainer->stats.bLeadership + ( 10 * pTrainer->stats.bExpLevel ) ) * gGameExternalOptions.ubTownMilitiaTrainingRate;
@@ -10563,7 +10563,7 @@ void CreateDestroyMouseRegionsForRadioMenu(void)
 
 	if ((fShowRadioMenu == TRUE) && (fCreated == FALSE) && (g_StrategicMilitiaCall.GetRadioBoxID() != -1))
 	{
-		// ������������� ����������� ���������� ����� ��������� ����
+		// Принудительно выстраиваем координаты перед фиксацией мыши
 		DetermineBoxPositions();
 		DefineRadioBoxRegions(g_StrategicMilitiaCall.GetRadioBoxID(), gRadioMenuRegion, RadioMenuMvtCallBack, RadioMenuBtnCallback);
 		fCreated = TRUE;
@@ -10582,7 +10582,7 @@ void CreateDestroyMouseRegionsForRadioSectorMenu(void)
 
 	if ((fShowRadioSectorMenu == TRUE) && (fCreated == FALSE) && (g_StrategicMilitiaCall.GetSectorBoxID() != -1))
 	{
-		// �������������� ��������� 3-�� ���� � ����� ������ ����
+		// Синхронизируем положение 3-го меню и сразу вешаем мышь
 		DetermineBoxPositions();
 		DefineRadioBoxRegions(g_StrategicMilitiaCall.GetSectorBoxID(), gRadioSectorMenuRegion, RadioSectorMenuMvtCallBack, RadioSectorMenuBtnCallback);
 		fCreated = TRUE;
@@ -10601,7 +10601,7 @@ void CreateDestroyMouseRegionsForRadioNumberMenu(void)
 
 	if ((fShowRadioNumberMenu == TRUE) && (fCreated == FALSE) && (g_StrategicMilitiaCall.GetNumberBoxID() != -1))
 	{
-		// �������������� ��������� 4-�� ���� � ������ ����
+		// Синхронизируем положение 4-го меню и вешаем мышь
 		DetermineBoxPositions();
 		DefineRadioBoxRegions(g_StrategicMilitiaCall.GetNumberBoxID(), gRadioNumberMenuRegion, RadioNumberMenuMvtCallBack, RadioNumberMenuBtnCallback);
 		fCreated = TRUE;
@@ -10688,7 +10688,7 @@ void RadioMenuBtnCallback(MOUSE_REGION* pRegion, INT32 iReason)
 			fShowRadioMenu = FALSE;
 		}
 		else if ((iValue == RADIO_MENU_SCAN) && pSoldier) {
-			// ������ ������������ �������������...
+			// Логика сканирования радиостанцией...
 		}
 		else if ((iValue == RADIO_MENU_CALL_MILITIA) && pSoldier) {
 			if (g_StrategicMilitiaCall.CanCharacterCallMilitia(pSoldier)) {
@@ -10731,28 +10731,28 @@ void RadioSectorMenuBtnCallback(MOUSE_REGION* pRegion, INT32 iReason)
 
 void RadioNumberMenuBtnCallback(MOUSE_REGION* pRegion, INT32 iReason)
 {
-	// ���������� ��������� NUM_MENU_ALL ��� ������� �������, ����� �������� �������������� �����������
+	// Используем константу NUM_MENU_ALL для размера массива, чтобы избежать предупреждений компилятора
 	static const UINT16 usRadioNumbers[MilitiaCall::NUM_MENU_ALL] = { 5, 10, 15, 20, 30, 40 };
 	INT32 iValue = MSYS_GetRegionUserData(pRegion, 0);
 	SOLDIERTYPE* pSoldier = GetSelectedAssignSoldier(FALSE);
 
 	if (iReason & MSYS_CALLBACK_REASON_LBUTTON_UP)
 	{
-		// �����������: �������� ����������� RADIO_NUMBER_MENU_CANCEL �� ��������� �� ������
+		// ИСПРАВЛЕНИЕ: Заменили ненайденную RADIO_NUMBER_MENU_CANCEL на константу из класса
 		if (iValue == MilitiaCall::NUM_MENU_CANCEL) {
 			fShowRadioNumberMenu = FALSE;
 		}
 		else if (pSoldier && g_StrategicMilitiaCall.GetRadioSelectedSector() != 0xFFFF) {
 			UINT16 usNumber = 0;
 
-			// �����������: �������� ���������� ����� 6 �� ��������� MilitiaCall::NUM_MENU_ALL
-			if (iValue == MilitiaCall::NUM_MENU_ALL) { // ���� "���"
+			// ИСПРАВЛЕНИЕ: Заменили магическое число 6 на константу MilitiaCall::NUM_MENU_ALL
+			if (iValue == MilitiaCall::NUM_MENU_ALL) { // Пулл "Все"
 				UINT16 usSelectedSector = g_StrategicMilitiaCall.GetRadioSelectedSector();
 
-				// �������� ���������� ������� ������ JA2 ��� ��������, ��� ��� ����� ������ ���������
+				// Вызываем глобальную функцию движка JA2 для подсчета, так как метод класса приватный
 				usNumber = CountAllMilitiaInSector(SECTORX(usSelectedSector), SECTORY(usSelectedSector));
 			}
-			// �����������: ���������� �������� ��������� ����� ����������
+			// ИСПРАВЛЕНИЕ: Безопасная проверка диапазона строк количества
 			else if (iValue >= 0 && iValue < MilitiaCall::NUM_MENU_ALL) {
 				usNumber = usRadioNumbers[iValue];
 			}
@@ -10761,7 +10761,7 @@ void RadioNumberMenuBtnCallback(MOUSE_REGION* pRegion, INT32 iReason)
 				g_StrategicMilitiaCall.ExecuteStrategicMilitiaCall(pSoldier, usNumber);
 			}
 
-			// ��������� ��� ������� ���� (���� ������� ����������)
+			// Закрываем всю цепочку меню (фича успешно отработала)
 			fShowRadioNumberMenu = FALSE;
 			fShowRadioSectorMenu = FALSE;
 			fShowRadioMenu = FALSE;
@@ -15419,7 +15419,7 @@ BOOLEAN HandleAssignmentExpansionAndHighLightForRadioSectorMenu(void)
 {
 	if (fShowRadioNumberMenu)
 	{
-		// �����������: ����� ID ����� � ������ ������������ ������ �������� �� ������ ����
+		// ИСПРАВЛЕНИЕ: Берем ID бокса и индекс подсвеченной строки напрямую из класса фичи
 		INT32 hSectorBox = g_StrategicMilitiaCall.GetSectorBoxID();
 		INT32 iHighLine = g_StrategicMilitiaCall.GetSectorMenuHighLine();
 

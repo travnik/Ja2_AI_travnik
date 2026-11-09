@@ -2764,7 +2764,7 @@ void INVRenderINVPanelItem( SOLDIERTYPE *pSoldier, INT16 sPocket, UINT8 fDirtyLe
 					//Jenilee: determine the cost of moving this item around in our inventory
 					UINT16 usCostToMoveItem = GetInvMovementCost(gpItemPointer, iLastHandPos, sPocket);
 					// Flugente: backgrounds
-					usCostToMoveItem = (usCostToMoveItem * (100 + pSoldier->GetBackgroundValue(BG_INVENTORY))) / 100;
+					usCostToMoveItem = usCostToMoveItem * (100 + pSoldier->GetBackgroundValue(BG_INVENTORY)) / 100;
 
 					//we dont have enough APs to move it to this slot
 					if (usCostToMoveItem > 0 && pSoldier->bActionPoints < usCostToMoveItem && pSoldier->inv[iLastHandPos].usItem == NULL)
@@ -13952,6 +13952,7 @@ void ItemDescTransformRegionCallback( MOUSE_REGION *pRegion, INT32 reason )
 		}
 		
 		// MVP: craft recipes viewer (text output)
+		if (gGameExternalOptions.fShowItemCraftInfo)
 		{
 			POPUP_OPTION *pOption = new POPUP_OPTION(&std::wstring(gzCraftInfoMessage[CRAFTINFO_MENU_ITEM]), new popupCallbackFunction<void, UINT16>(TransformationMenuPopup_CraftInfo, gpItemDescObject->usItem));
 			gItemDescTransformPopup->addOption(*pOption);

@@ -2390,6 +2390,8 @@ void LoadGameExternalOptions()
 	gGameExternalOptions.fWhiteNights = iniReader.ReadBoolean("Extended Options", "WHITE_NIGHTS", false, false);
 	gGameExternalOptions.fAlwaysCloudy = iniReader.ReadBoolean("Extended Options", "ALWAYS_CLOUDY", false, false);
 
+	gGameExternalOptions.fShowItemCraftInfo = iniReader.ReadBoolean("Extended Options", "SHOW_ITEM_CRAFT_INFO", false, false);
+
 	gGameExternalOptions.ubAPSharedAmongPassengersAndVehicleMode = iniReader.ReadInteger("Extended Options", "AP_SHARED_AMONG_PASSENGERS_AND_VEHICLE_MODE", 3, 0, 3);
 	gGameExternalOptions.ubAPSharedAmongPassengersAndVehicleScale = iniReader.ReadInteger("Extended Options", "AP_SHARED_AMONG_PASSENGERS_AND_VEHICLE_SCALE", 100, 0, 200);
 	gGameExternalOptions.fAllowDrivingVehiclesInTactical = iniReader.ReadBoolean("Extended Options", "ALLOW_DRIVING_VEHICLES_IN_TACTICAL", true, false);

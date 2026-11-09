@@ -159,6 +159,7 @@ extern INT32 iHelicopterVehicleId;
 extern void TeleportSelectedSoldier( void );
 extern BOOLEAN AddSoldierToSectorNoCalculateDirectionUseAnimation( UINT8 ubID, UINT16 usAnimState, UINT16 usAnimCode );
 extern void PlaySplashSound(INT32 sGridNo);
+extern BOOLEAN IsShowOffNearBy(SOLDIERTYPE * pSoldier); // Added by SANDRO
 
 // Flugente: external sector data
 extern SECTOR_EXT_DATA	SectorExternalData[256][4];
@@ -8646,7 +8647,7 @@ void CalculateSoldierAniSpeed( SOLDIERTYPE *pSoldier, SOLDIERTYPE *pStatsSoldier
 		case SWATTING_WK:
 		case SWAT_BACKWARDS_WK:
 			// Flugente: background running speed reduces time needed: + is good, - is bad
-			uiTerrainDelay = (uiTerrainDelay * (100 - pSoldier->GetBackgroundValue(BG_PERC_SPEED_RUNNING) )) / 100;
+			uiTerrainDelay = uiTerrainDelay * (100 - pSoldier->GetBackgroundValue(BG_PERC_SPEED_RUNNING) ) / 100;
 			break;
 
 		default:
@@ -13587,7 +13588,7 @@ UINT32 SOLDIERTYPE::SoldierDressWound( SOLDIERTYPE *pVictim, INT16 sKitPts, INT1
 	if (!(fOnSurgery) && gGameOptions.fNewTraitSystem && HAS_SKILL_TRAIT( this, DOCTOR_NT ))
 	{
 		uiPossible = uiPossible * (100 - gSkillTraitValues.bSpeedModifierBandaging) / 100;
-		uiPossible += ( uiPossible * gSkillTraitValues.ubDOBandagingSpeedPercent * NUM_SKILL_TRAITS( this, DOCTOR_NT ) + this->GetBackgroundValue(BG_PERC_BANDAGING) ) / 100;
+		uiPossible += (uiPossible * gSkillTraitValues.ubDOBandagingSpeedPercent * NUM_SKILL_TRAITS( this, DOCTOR_NT ) + this->GetBackgroundValue(BG_PERC_BANDAGING)) / 100;
 	}
 
 	uiActual = uiPossible;		// start by assuming maximum possible
@@ -18089,7 +18090,7 @@ void	SOLDIERTYPE::SwitchWeapons( BOOLEAN fKnife, BOOLEAN fSideArm )
 				APTotalCost += GetInvMovementCost(&this->inv[HANDPOS], HANDPOS, handobjstorageslot);
 
 			// Flugente: backgrounds
-			APTotalCost = (APTotalCost * (100 + this->GetBackgroundValue(BG_INVENTORY))) / 100;
+			APTotalCost = APTotalCost * (100 + this->GetBackgroundValue(BG_INVENTORY)) / 100;
 
 			if (this->bActionPoints >= APTotalCost)
 			{
@@ -18368,33 +18369,57 @@ INT8 SOLDIERTYPE::GetTraitCTHModifier( UINT16 usItem, INT16 ubAimTime, UINT8 ubT
 	return modifier;
 }
 
-void SOLDIERTYPE::AddDrugValues(UINT8 uDrugType, UINT8 usEffect, UINT8 usTravelRate, UINT8 usSideEffect )
+void SOLDIERTYPE::AddDrugValues(UINT8 ubDrugType, UINT8 ubEffect, UINT8 ubTravelRate, UINT8 ubSideEffect)
 {
+	//ScreenMsg(FONT_LTGREEN, MSG_INTERFACE, L"Add Drug Values %s type %d effect %d travel rate %d side effect %d", this->GetName(), ubDrugType, ubEffect, ubTravelRate, ubSideEffect);
+
 	// in case of wrong input, stay safe
-	if ( uDrugType >= DRUG_TYPE_MAX )
+	if ( ubDrugType >= DRUG_TYPE_MAX )
 		return;
 
 	// Flugente: backgrounds
-	if ( this->ubProfile != NOBODY && uDrugType == DRUG_TYPE_ALCOHOL )
+	if (this->ubProfile != NO_PROFILE && ubDrugType == DRUG_TYPE_ALCOHOL)
 	{
-		usEffect		= usEffect		* ((100 - this->GetBackgroundValue(BG_RESI_ALCOHOL)) / 100);
-		usSideEffect	= usSideEffect	* ((100 - this->GetBackgroundValue(BG_RESI_ALCOHOL)) / 100);
+		ubEffect		= ubEffect		* (100 - this->GetBackgroundValue(BG_RESI_ALCOHOL)) / 100;
+		ubSideEffect	= ubSideEffect	* (100 - this->GetBackgroundValue(BG_RESI_ALCOHOL)) / 100;
 	}
+
+	//ScreenMsg(FONT_LTBLUE, MSG_INTERFACE, L"background modified %s type %d effect %d travel rate %d side effect %d", this->GetName(), ubDrugType, ubEffect, ubTravelRate, ubSideEffect);
+
+	// sevenfm: double side effect for merc with Russian Vodka background
+	if (this->ubProfile != NO_PROFILE &&
+		ubDrugType == DRUG_TYPE_ALCOHOL &&
+		this->HasBackgroundFlag(BACKGROUND_RUSSIAN_VODKA))
+	{
+		ubSideEffect = min(255, ubSideEffect * 2);
+
+		//ScreenMsg(FONT_LTBLUE, MSG_INTERFACE, L"russian vodka modified %s type %d effect %d travel rate %d side effect %d", this->GetName(), ubDrugType, ubEffect, ubTravelRate, ubSideEffect);
+	}	
+
+	// sevenfm: double side effect when using alcohol in hungover
+	if (this->ubProfile != NO_PROFILE &&
+		ubDrugType == DRUG_TYPE_ALCOHOL &&
+		GetDrunkLevel(this) == HUNGOVER)
+	{
+		ubSideEffect = min(255, ubSideEffect * 2);
+
+		//ScreenMsg(FONT_LTBLUE, MSG_INTERFACE, L"hungover modified %s type %d effect %d travel rate %d side effect %d", this->GetName(), ubDrugType, ubEffect, ubTravelRate, ubSideEffect);
+	}	
 
 	// Add effects
-	if ( ( this->drugs.bFutureDrugEffect[ uDrugType ] + usEffect ) < 127 )
+	if ( ( this->drugs.bFutureDrugEffect[ ubDrugType ] + ubEffect ) < 127 )
 	{
-		this->drugs.bFutureDrugEffect[ uDrugType ] += usEffect;
+		this->drugs.bFutureDrugEffect[ ubDrugType ] += ubEffect;
 	}
-	this->drugs.bDrugEffectRate[ uDrugType ]		= usTravelRate;
+	this->drugs.bDrugEffectRate[ ubDrugType ] = ubTravelRate;
 
 	// Reset once we sleep...
-	this->drugs.bTimesDrugUsedSinceSleep[ uDrugType ]++;
+	this->drugs.bTimesDrugUsedSinceSleep[ ubDrugType ]++;
 
 	// Increment side effects..
-	this->drugs.bDrugSideEffect[uDrugType] = min(127, this->drugs.bDrugSideEffect[uDrugType] + usSideEffect);
+	this->drugs.bDrugSideEffect[ubDrugType] = min(127, this->drugs.bDrugSideEffect[ubDrugType] + ubSideEffect);
 	// Stop side effects until were done....
-	this->drugs.bDrugSideEffectRate[ uDrugType ]	= 0;
+	this->drugs.bDrugSideEffectRate[ ubDrugType ]	= 0;
 
 	// set flag: we are on drugs
 	this->usSoldierFlagMask |= SOLDIER_DRUGGED;
@@ -26301,6 +26326,193 @@ BOOLEAN SOLDIERTYPE::SuppressedThisTurn(void)
 	return FALSE;
 }
 
+// check for positive effect only, ignore side effect
+BOOLEAN SOLDIERTYPE::HasAdrenalineEffect(void)
+{
+	if (this->drugs.bDrugEffect[DRUG_TYPE_ADRENALINE] > 0)
+		return TRUE;
+
+	return FALSE;
+}
+
+BOOLEAN SOLDIERTYPE::IsNervousAndAlone(void)
+{
+	if (this->bActive &&
+		this->bInSector &&
+		this->ubProfile != NO_PROFILE &&
+		(gMercProfiles[this->ubProfile].bDisability == NERVOUS || MercUnderTheInfluence(this, DRUG_TYPE_NERVOUS)) &&
+		this->aiData.bMorale < 50 &&
+		(this->ubGroupID != 0 && this->bAssignment < ON_DUTY && PlayerIDGroupInMotion(this->ubGroupID) && NumberOfPeopleInSquad(this->bAssignment) == 1 ||
+		this->bActive && this->bInSector && DistanceToClosestFriend(this) > NERVOUS_RADIUS ||
+		NumPlayerTeamMembersInSector(this->sSectorX, this->sSectorY, this->bSectorZ) == 1))
+	{
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+BOOLEAN SOLDIERTYPE::IsSociableAndAlone(void)
+{
+	// sociable
+	if (this->bActive &&
+		this->bInSector &&
+		this->ubProfile != NO_PROFILE &&
+		gMercProfiles[this->ubProfile].bCharacterTrait == CHAR_TRAIT_SOCIABLE)
+	{
+		INT8 bNumMercs = CheckMercsNearForCharTraits(this->ubProfile, CHAR_TRAIT_SOCIABLE);
+		if (bNumMercs == 0)	// -5
+		{
+			return TRUE;
+		}
+	}
+
+	return FALSE;
+}
+
+BOOLEAN SOLDIERTYPE::IsSociableAndNotEnoughFriends(void)
+{
+	// sociable
+	if (this->bActive &&
+		this->bInSector &&
+		this->ubProfile != NO_PROFILE &&
+		gMercProfiles[this->ubProfile].bCharacterTrait == CHAR_TRAIT_SOCIABLE)
+	{
+		INT8 bNumMercs = CheckMercsNearForCharTraits(this->ubProfile, CHAR_TRAIT_SOCIABLE);
+		if (bNumMercs == 1)	// -2
+		{
+			return TRUE;
+		}
+	}
+
+	return FALSE;
+}
+
+BOOLEAN SOLDIERTYPE::IsLonerAndNotAlone(void)
+{
+	if (this->bActive &&
+		this->bInSector &&
+		this->ubProfile != NO_PROFILE &&
+		gMercProfiles[this->ubProfile].bCharacterTrait == CHAR_TRAIT_LONER)
+	{
+		INT8 bNumMercs = CheckMercsNearForCharTraits(this->ubProfile, CHAR_TRAIT_LONER);
+		if (bNumMercs == 1)
+		{
+			return TRUE;
+		}
+	}
+
+	return FALSE;
+}
+
+BOOLEAN SOLDIERTYPE::IsLonerAndCrowded(void)
+{
+	if (this->bActive &&
+		this->bInSector &&
+		this->ubProfile != NO_PROFILE &&
+		gMercProfiles[this->ubProfile].bCharacterTrait == CHAR_TRAIT_LONER)
+	{
+		INT8 bNumMercs = CheckMercsNearForCharTraits(this->ubProfile, CHAR_TRAIT_LONER);
+		if (bNumMercs > 1)
+		{
+			return TRUE;
+		}
+	}
+
+	return FALSE;
+}
+
+BOOLEAN SOLDIERTYPE::IsShowOffFriendNearBy(void)
+{
+	if (this->bActive &&
+		this->bInSector &&
+		this->ubProfile != NO_PROFILE &&
+		IsShowOffNearBy(this))
+	{
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+BOOLEAN SOLDIERTYPE::IsHeatIntolerantActive(void)
+{
+	if (this->bActive &&
+		this->bInSector &&
+		this->ubProfile != NO_PROFILE &&
+		(gMercProfiles[this->ubProfile].bDisability == HEAT_INTOLERANT || MercUnderTheInfluence(this, DRUG_TYPE_HEATINTOLERANT)) &&
+		MercIsHot(this))
+	{
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+BOOLEAN SOLDIERTYPE::IsClaustrophobicActive(void)
+{
+	if (this->bActive &&
+		this->bInSector &&
+		this->ubProfile != NO_PROFILE &&
+		(gMercProfiles[this->ubProfile].bDisability == CLAUSTROPHOBIC || MercUnderTheInfluence(this, DRUG_TYPE_CLAUSTROPHOBIC)) &&
+		gbWorldSectorZ > 0)
+	{
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+BOOLEAN SOLDIERTYPE::IsFearOfInsectsActive(void)
+{
+	// fear of insects
+	if (this->bActive &&
+		this->bInSector &&
+		this->ubProfile != NO_PROFILE &&
+		(gMercProfiles[this->ubProfile].bDisability == FEAR_OF_INSECTS || MercUnderTheInfluence(this, DRUG_TYPE_FEAROFINSECTS)) &&
+		MercSeesCreature(this))
+	{
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+BOOLEAN SOLDIERTYPE::IsBloodlustActive(void)
+{
+	// bloodlust
+	if (this->bActive &&
+		this->bInSector &&
+		this->ubProfile != NO_PROFILE &&
+		this->usSkillCounter[SOLDIER_COUNTER_BLOODLUST] > 0 &&
+		this->HasBackgroundFlag(BACKGROUND_BLOODLUST))
+	{
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+BOOLEAN SOLDIERTYPE::IsOverweight(void)
+{	
+	if (CalculateCarriedWeight(this, TRUE) > 100)
+	{
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+BOOLEAN SOLDIERTYPE::IsOverweightHeavy(void)
+{
+	if (CalculateCarriedWeight(this, TRUE) > 150)
+	{
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
 BOOLEAN SOLDIERTYPE::InShock(void)
 {
 	UINT8 ubShock = this->ShockLevelPercent();
@@ -26425,7 +26637,7 @@ void SOLDIERTYPE::Rally(void)
 			!this->IsPOW() &&
 			this->ubProfile != NO_PROFILE)
 		{
-			// FLO may loose consciousness when rallied
+			// FLO may lose consciousness when rallied
 			if (this->ubProfile == FLO)	// gMercProfiles[this->ubProfile].bDisability == NERVOUS
 			{
 				this->AddDrugValues(DRUG_TYPE_KNOCKOUT, 1, 1, 1 + Random(3));

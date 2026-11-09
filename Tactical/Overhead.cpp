@@ -9487,7 +9487,7 @@ void HandleSuppressionFire( UINT8 ubTargetedMerc, UINT8 ubCausedAttacker )
 				ubMinPointsToSuppress = ubMinPointsToSuppress / 2;
 			}
 			// alcohol lowers reaction
-			else if (MercUnderTheInfluence(pSoldier, DRUG_TYPE_ALCOHOL) || pSoldier->drugs.bDrugSideEffect[DRUG_TYPE_ADRENALINE])
+			else if (MercUnderTheInfluence(pSoldier, DRUG_TYPE_ALCOHOL) || pSoldier->drugs.bDrugEffect[DRUG_TYPE_ADRENALINE])
 			{
 				ubMinPointsToSuppress += APBPConstants[AP_CROUCH];
 			}
@@ -9559,7 +9559,7 @@ void HandleSuppressionFire( UINT8 ubTargetedMerc, UINT8 ubCausedAttacker )
 				pSoldier->IsMercBodyType() &&
 				(pSoldier->AnimEndHeight() == ANIM_PRONE || pSoldier->AnimEndHeight() == ANIM_CROUCH && !IsValidStance(pSoldier, ANIM_PRONE)) &&
 				!pSoldier->IsUnconscious() &&
-				//!(pSoldier->drugs.bDrugEffect[DRUG_TYPE_ADRENALINE]) &&
+				!(pSoldier->drugs.bDrugEffect[DRUG_TYPE_ADRENALINE]) &&
 				!Water(pSoldier->sGridNo, pSoldier->pathing.bLevel))
 			{ 
 				fCower = true; 
@@ -11555,7 +11555,7 @@ void CalculateSurrenderStrength(SOLDIERTYPE *pAskingSoldier, UINT32 &playersides
 	// if the merc asking for surrender is experienced in capitulation negotiations, we get a bonus to our strength
 	if (pAskingSoldier)
 	{
-		playersidestrength = (playersidestrength * (100 + pSoldier->GetBackgroundValue(BG_PERC_CAPITULATION))) / 100;
+		playersidestrength = playersidestrength * (100 + pSoldier->GetBackgroundValue(BG_PERC_CAPITULATION)) / 100;
 
 		// sevenfm: bonus for having squadleader trait		
 		if (gGameOptions.fNewTraitSystem)
