@@ -50,12 +50,12 @@
 	#elif defined (JA113DEMO)
 		CHAR16		zVersionLabel[256]		= { L"Jagged Alliance 2 Demo - v1.13.7609 (2014 Official Release)" };
 	#else
-		CHAR16		zVersionLabel[256]		= { L"Jagged Alliance 2 v1.13.7609+AI (Travnik edition) v.1.2" };
+		CHAR16		zVersionLabel[256]		= { L"Jagged Alliance 2 v1.13.7609+AI (Travnik edition) v.1.4" };
 	#endif
 
 #endif
 										
-CHAR8		czVersionNumber[16]	= { "Build 2.11.26" };		//YY.MM.DD
+CHAR8		czVersionNumber[16]	= { "Build 9.11.26" };		//YY.MM.DD
 CHAR16		zTrackingNumber[16]	= { L"Z" };
 	
 // SAVE_GAME_VERSION is defined in header, change it there

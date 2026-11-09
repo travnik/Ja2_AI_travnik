@@ -3304,6 +3304,85 @@ void RenderSMPanel( BOOLEAN *pfDirty )
 					swprintf(pStr, L"%s\n%s: %d%%", pStr, TacticalStr[MERC_VITAL_STATS_SHOCK], gpSMCurrentMerc->ShockLevelPercent());
 				}
 
+				// sevenfm: print drunk level
+				if (GetDrunkLevel(gpSMCurrentMerc) != SOBER)
+				{
+					swprintf(pStr, L"%s\n%s: %s", pStr, pDrugStrings[DRUG_TYPE_ALCOHOL], pDrunkStrings[GetDrunkLevel(gpSMCurrentMerc)]);
+					//swprintf(pStr, L"%s\n%s", pStr, pDrunkStrings[GetDrunkLevel(gpSMCurrentMerc)]);
+				}
+
+				// sevenfm: print drugs
+				if (MercUnderTheInfluence(gpSMCurrentMerc))
+				{
+					PrintDrugEffectsStr(gpSMCurrentMerc, pStr);
+				}
+
+				// sevenfm: print social modifiers
+				if (gpSMCurrentMerc->IsNervousAndAlone())
+				{
+					swprintf(pStr, L"%s\n%s", pStr, pSituationalStrings[0]);
+				}
+				// sociable
+				if (gpSMCurrentMerc->IsSociableAndAlone())
+				{
+					swprintf(pStr, L"%s\n%s", pStr, pSituationalStrings[1]);
+				}
+				else if (gpSMCurrentMerc->IsSociableAndNotEnoughFriends())
+				{
+					swprintf(pStr, L"%s\n%s", pStr, pSituationalStrings[1]);
+				}
+
+				// crowded
+				if (gpSMCurrentMerc->IsLonerAndCrowded())
+				{
+					swprintf(pStr, L"%s\n%s", pStr, pSituationalStrings[2]);
+				}
+				else if (gpSMCurrentMerc->IsLonerAndNotAlone())
+				{
+					swprintf(pStr, L"%s\n%s", pStr, pSituationalStrings[2]);
+				}
+
+				// showoff
+				if (gpSMCurrentMerc->IsShowOffFriendNearBy())
+				{
+					swprintf(pStr, L"%s\n%s", pStr, pSituationalStrings[3]);
+				}
+
+				if (gpSMCurrentMerc->IsHeatIntolerantActive())
+				{
+					swprintf(pStr, L"%s\n%s", pStr, pSituationalStrings[4]);
+				}
+
+				if (gpSMCurrentMerc->IsClaustrophobicActive())
+				{
+					swprintf(pStr, L"%s\n%s", pStr, pSituationalStrings[5]);
+				}
+
+				if (gpSMCurrentMerc->IsFearOfInsectsActive())
+				{
+					swprintf(pStr, L"%s\n%s", pStr, pSituationalStrings[6]);
+				}
+
+				if (gpSMCurrentMerc->IsBloodlustActive())
+				{
+					swprintf(pStr, L"%s\n%s", pStr, pSituationalStrings[7]);
+				}
+
+				if (gpSMCurrentMerc->HasStunningLooks())
+				{
+					swprintf(pStr, L"%s\n%s", pStr, pSituationalStrings[8]);
+				}
+
+				// overweight
+				if (gpSMCurrentMerc->IsOverweightHeavy())
+				{
+					swprintf(pStr, L"%s\n%s", pStr, pSituationalStrings[10]);
+				}
+				else if (gpSMCurrentMerc->IsOverweight())
+				{
+					swprintf(pStr, L"%s\n%s", pStr, pSituationalStrings[9]);
+				}
+
 				SetRegionFastHelpText( &(gSM_SELMERCBarsRegion), pStr );
 
 				// Buggler: skills/traits tooltip on merc portrait
@@ -3788,7 +3867,8 @@ void SMInvClickCamoCallback( MOUSE_REGION * pRegion, INT32 iReason )
 
 
 						// Say OK acknowledge....
-						gpSMCurrentMerc->DoMercBattleSound( BATTLE_SOUND_COOL1 );
+						// sevenfm: moved sound to ApplyDrugs()
+						//gpSMCurrentMerc->DoMercBattleSound( BATTLE_SOUND_COOL1 );
 
 					}
 					else if ( gGameOptions.fFoodSystem && ApplyFood( gpSMCurrentMerc, gpItemPointer, FALSE, FALSE ) )
@@ -4251,7 +4331,7 @@ void SMInvClickCallback( MOUSE_REGION * pRegion, INT32 iReason )
 					//Jenilee: determine the cost of moving this item around in our inventory
 					usCostToMoveItem = GetInvMovementCost(gpItemPointer, iLastHandPos, uiHandPos);
 					// Flugente: backgrounds
-					usCostToMoveItem = (usCostToMoveItem * (100 + gpSMCurrentMerc->GetBackgroundValue(BG_INVENTORY))) / 100;
+					usCostToMoveItem = usCostToMoveItem * (100 + gpSMCurrentMerc->GetBackgroundValue(BG_INVENTORY)) / 100;
 				}
 				
 				// sevenfm: less restrictions, allow to put item into inventory if resulting AP >= -MAX_AP_CARRIED
@@ -4355,7 +4435,7 @@ void SMInvClickCallback( MOUSE_REGION * pRegion, INT32 iReason )
 									// silversurfer: This didn't cost any AP. Why? CTRL + LeftClick should deduct the same AP as manual attachment in the EDB.
 									usCostToMoveItem = AttachmentAPCost(gpItemPointer->usItem, gpSMCurrentMerc->inv[uiHandPos].usItem, gpSMCurrentMerc);
 									// Flugente: backgrounds
-									usCostToMoveItem = (usCostToMoveItem * (100 + gpSMCurrentMerc->GetBackgroundValue(BG_INVENTORY))) / 100;
+									usCostToMoveItem = usCostToMoveItem * (100 + gpSMCurrentMerc->GetBackgroundValue(BG_INVENTORY)) / 100;
 									// do we have enough AP?
 									if (!EnoughPoints(gpSMCurrentMerc, usCostToMoveItem, 0, TRUE))
 										return;
@@ -6296,6 +6376,85 @@ void RenderTEAMPanel( BOOLEAN fDirty )
 							if (pSoldier->ShockLevelPercent() > 0)
 							{
 								swprintf(pStr, L"%s\n%s: %d%%", pStr, TacticalStr[MERC_VITAL_STATS_SHOCK], pSoldier->ShockLevelPercent());
+							}
+
+							// sevenfm: print drunk level
+							if (GetDrunkLevel(pSoldier) != SOBER)
+							{
+								swprintf(pStr, L"%s\n%s: %s", pStr, pDrugStrings[DRUG_TYPE_ALCOHOL], pDrunkStrings[GetDrunkLevel(pSoldier)]);
+								//swprintf(pStr, L"%s\n%s", pStr, pDrunkStrings[GetDrunkLevel(pSoldier)]);
+							}
+
+							// sevenfm: print drugs
+							if (MercUnderTheInfluence(pSoldier))
+							{
+								PrintDrugEffectsStr(pSoldier, pStr);
+							}
+
+							// sevenfm: print social modifiers
+							if (pSoldier->IsNervousAndAlone())
+							{
+								swprintf(pStr, L"%s\n%s", pStr, pSituationalStrings[0]);
+							}
+							// sociable
+							if (pSoldier->IsSociableAndAlone())
+							{
+								swprintf(pStr, L"%s\n%s", pStr, pSituationalStrings[1]);
+							}
+							else if (pSoldier->IsSociableAndNotEnoughFriends())
+							{
+								swprintf(pStr, L"%s\n%s", pStr, pSituationalStrings[1]);
+							}
+
+							// crowded
+							if (pSoldier->IsLonerAndCrowded())
+							{
+								swprintf(pStr, L"%s\n%s", pStr, pSituationalStrings[2]);
+							}
+							else if (pSoldier->IsLonerAndNotAlone())
+							{
+								swprintf(pStr, L"%s\n%s", pStr, pSituationalStrings[2]);
+							}
+
+							// showoff
+							if (pSoldier->IsShowOffFriendNearBy())
+							{
+								swprintf(pStr, L"%s\n%s", pStr, pSituationalStrings[3]);
+							}
+
+							if (pSoldier->IsHeatIntolerantActive())
+							{
+								swprintf(pStr, L"%s\n%s", pStr, pSituationalStrings[4]);
+							}
+
+							if (pSoldier->IsClaustrophobicActive())
+							{
+								swprintf(pStr, L"%s\n%s", pStr, pSituationalStrings[5]);
+							}
+
+							if (pSoldier->IsFearOfInsectsActive())
+							{
+								swprintf(pStr, L"%s\n%s", pStr, pSituationalStrings[6]);
+							}
+
+							if (pSoldier->IsBloodlustActive())
+							{
+								swprintf(pStr, L"%s\n%s", pStr, pSituationalStrings[7]);
+							}
+
+							if (pSoldier->HasStunningLooks())
+							{
+								swprintf(pStr, L"%s\n%s", pStr, pSituationalStrings[8]);
+							}
+
+							// overweight
+							if (pSoldier->IsOverweightHeavy())
+							{
+								swprintf(pStr, L"%s\n%s", pStr, pSituationalStrings[10]);
+							}
+							else if (pSoldier->IsOverweight())
+							{
+								swprintf(pStr, L"%s\n%s", pStr, pSituationalStrings[9]);
 							}
 
 							SetRegionFastHelpText( &(gTEAM_BarsRegions[ cnt ]), pStr );

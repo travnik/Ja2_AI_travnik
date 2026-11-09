@@ -47,7 +47,10 @@
 #include "Campaign Types.h"	// added by Flugente
 
 // Flugente: gear templates
-#include "GearTemplate.h" // ���������� ����� ����� ��������� ��������
+#include "GearTemplate.h" // Подключаем новый класс менеджера шаблонов
+
+const STR8 INTERFACE_SECTOR_INV_BUTTONS_FILENAME = "INTERFACE\\sector_inventory_buttons.sti";
+
 extern void EquipmentListMenu();
 
 //forward declarations of common classes to eliminate includes
@@ -2084,12 +2087,27 @@ void CreateMapInventoryButtons(void)
 	HandleSetFilterButtons();
 
 	// Gear Template: Save template button
-	guiMapInvenFilterButtonImage[10] = LoadButtonImage("INTERFACE\\sector_inventory_buttons.sti", 40, 40, -1, 41, -1);
+	guiMapInvenFilterButtonImage[10] = guiBivouacPanelDoneButtonImage = LoadButtonImage(
+		INTERFACE_SECTOR_INV_BUTTONS_FILENAME,
+		static_cast<INT32>(MapInventoryFilterButtons::SaveTemplateButtonOn),
+		static_cast<INT32>(MapInventoryFilterButtons::SaveTemplateButtonOn),
+		-1,
+		static_cast<INT32>(MapInventoryFilterButtons::SaveTemplateButtonOff),
+		-1
+	);
 	guiMapInvenFilterButton[10] = QuickCreateButton(guiMapInvenFilterButtonImage[10], INVEN_POOL_X + 371 + xResOffset, INVEN_POOL_Y + 10 + yResOffset,
 		BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
 		NULL, (GUI_CALLBACK)MapInventoryWriteEquipmentTemplate);
 	// Gear Template: Read template button
-	guiMapInvenFilterButtonImage[11] = LoadButtonImage("INTERFACE\\sector_inventory_buttons.sti", 42, 42, -1, 43, -1);
+	guiMapInvenFilterButtonImage[11] = guiBivouacPanelDoneButtonImage = LoadButtonImage(
+		INTERFACE_SECTOR_INV_BUTTONS_FILENAME,
+		static_cast<INT32>(MapInventoryFilterButtons::ReadTemplateButtonOn),
+		static_cast<INT32>(MapInventoryFilterButtons::ReadTemplateButtonOn),
+		-1,
+		static_cast<INT32>(MapInventoryFilterButtons::ReadTemplateButtonOff),
+		-1
+	);
+
 	guiMapInvenFilterButton[11] = QuickCreateButton(guiMapInvenFilterButtonImage[11], INVEN_POOL_X + 406 + xResOffset, INVEN_POOL_Y + 10 + yResOffset,
 		BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
 		NULL, (GUI_CALLBACK)MapInventoryReadEquipmentTemplate);
@@ -2097,7 +2115,13 @@ void CreateMapInventoryButtons(void)
 	// SQUAD_BIVOUAC: open/close the squad bivouac panel.
 	// Reuses the sector inventory zoom icon (magnifier) - it visually reads as "look inside".
 	// The button is only clickable when a bivouac-capable character is selected.
-	guiMapInvenFilterButtonImage[12] = LoadButtonImage("INTERFACE\\sector_inventory_buttons.sti", 0, 0, -1, 1, -1);
+	guiMapInvenFilterButtonImage[12] = guiBivouacPanelDoneButtonImage = LoadButtonImage(
+		INTERFACE_SECTOR_INV_BUTTONS_FILENAME,
+		-1,
+		static_cast<INT32>(MapInventoryFilterButtons::OpenBivouacOn),
+		-1,
+		static_cast<INT32>(MapInventoryFilterButtons::DropAllFromBivouacOff),
+		-1);
 	guiMapInvenFilterButton[12] = QuickCreateButton(guiMapInvenFilterButtonImage[12], INVEN_POOL_X + 441 + xResOffset, INVEN_POOL_Y + 10 + yResOffset,
 		BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
 		NULL, (GUI_CALLBACK)MapInventoryBivouacToggleBtn);
@@ -2106,6 +2130,9 @@ void CreateMapInventoryButtons(void)
 	return;
 }
 
+
+// Flugente: 
+extern void EquipmentListMenuCancel();
 
 // Flugente: 
 extern void EquipmentListMenuCancel();
@@ -6958,17 +6985,32 @@ static void BivouacPanelCreateSlots( void )
 	INT16 sBtnMid = BivouacPanelGetButtonsY( ) + BIVOUAC_PANEL_BTN_ROW_HEIGHT / 2;
 	INT16 sBtnsX = (INT16)( PLAYER_INFO_X + ( MAP_BORDER_X - BIVOUAC_PANEL_BTNS_TOTAL_WIDTH ) / 2 );
 
-	guiBivouacPanelDoneButtonImage = LoadButtonImage( "INTERFACE\\itemdescdonebutton.sti", -1, 0, -1, 1, -1 );
+	guiBivouacPanelDoneButtonImage = LoadButtonImage(
+		INTERFACE_SECTOR_INV_BUTTONS_FILENAME,
+		-1,
+		static_cast<INT32>(MapInventoryFilterButtons::OpenBivouacOn),
+		-1,
+		static_cast<INT32>(MapInventoryFilterButtons::OpenBivouacOff),
+		-1
+	);
+
 	guiBivouacPanelDoneButton = QuickCreateButton( guiBivouacPanelDoneButtonImage,
 		(INT16)( sBtnsX + BIVOUAC_PANEL_DROPALL_BTN_WIDTH + BIVOUAC_PANEL_BTN_GAP ), (INT16)( sBtnMid - BIVOUAC_PANEL_DONE_BTN_HEIGHT / 2 ),
 		BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
 		(GUI_CALLBACK)BtnGenericMouseMoveButtonCallback, (GUI_CALLBACK)BivouacPanelDoneBtn );
 
 	SetButtonFastHelpText( guiBivouacPanelDoneButton, pMapScreenInvenButtonHelpText[ 2 ] );
-
 	// SQUAD_BIVOUAC: "drop all" button, left of the Done button.
 	// Reuses the sector inventory's stack-and-merge icon (arrows merging into one slot).
-	guiBivouacPanelDropAllButtonImage = LoadButtonImage( "INTERFACE\\sector_inventory_buttons.sti", 16, 14, -1, 15, -1 );
+	guiBivouacPanelDropAllButtonImage = LoadButtonImage(
+		INTERFACE_SECTOR_INV_BUTTONS_FILENAME,
+		-1,
+		static_cast<INT32>(MapInventoryFilterButtons::DropAllFromBivouacOn),
+		-1,
+		static_cast<INT32>(MapInventoryFilterButtons::DropAllFromBivouacOff),
+		-1
+	);
+
 	guiBivouacPanelDropAllButton = QuickCreateButton( guiBivouacPanelDropAllButtonImage,
 		sBtnsX, (INT16)( sBtnMid - BIVOUAC_PANEL_DROPALL_BTN_HEIGHT / 2 ),
 		BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,

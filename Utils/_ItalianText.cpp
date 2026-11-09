@@ -4203,12 +4203,65 @@ STR16 pMoralStrings[] =
 	L"Cattivo",
 };
 
+// situational modifiers
+STR16 pSituationalStrings[] =
+{
+	L"Nervous alone",		// 0	//TODO.translate
+	L"Sociable alone",		// 1
+	L"Loner crowded",		// 2
+	L"Show off nearby",		// 3
+	L"Heat intolerant",		// 4
+	L"Claustrophobic",		// 5
+	L"Fear of insects",		// 6
+	L"Bloodlust",			// 7
+	L"Stunning looks",		// 8
+	L"Overweight",			// 9
+	L"Heavy overweight",		// 10
+};
+
 // Mercs equipment has now arrived and is now available in Omerta or Drassen.
 
 STR16 pLeftEquipmentString[] =
 { 
 	L"L'equipaggio di %s è ora disponibile a Omerta (A9).", 
 	L"L'equipaggio di %s è ora disponibile a Drassen (B13).",
+};
+
+// merc drunk state
+STR16 pDrunkStrings[] =
+{
+	L"Sober", 		//TODO.Translate
+	L"Feeling good",
+	L"Borderline",
+	L"Drunk",
+	L"Hungover",
+};
+
+// merc drug state
+STR16 pDrugStrings[] = 
+{
+	L"Adrenaline",		//TODO.Translate
+	L"Alcohol",
+	L"Regeneration",
+	L"Resistance",
+	L"Strength",
+	L"Agility",
+	L"Dexterity",
+	L"Wisdom",
+	L"Perception",
+	L"Psycho",
+	L"Nervous",
+	L"Claustrophobic",
+	L"Heat intolerant",
+	L"Fear of insects",
+	L"Forgetful",
+	L"Blind",
+	L"Knockout",
+	L"Vision",
+	L"Tunnel vision",
+	L"Life damage",
+	L"Cure poison",
+	L"Stun and kill",
 };
 
 // Status that appears on the Map Screen

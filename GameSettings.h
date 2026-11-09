@@ -1540,6 +1540,8 @@ typedef struct
 	BOOLEAN fWhiteNights;
 	BOOLEAN fAlwaysCloudy;
 
+	BOOLEAN fShowItemCraftInfo;
+
 	// drivable vehicles
 	UINT8 ubAPSharedAmongPassengersAndVehicleMode;
 	UINT8 ubAPSharedAmongPassengersAndVehicleScale;

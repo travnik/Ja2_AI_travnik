@@ -10,6 +10,18 @@
 // Flugente: number of map inventory filter buttons
 #define	MAP_INVENTORY_FILTER_BUTTONS	13	// Flugente: 9 -> 10; travnik: +1 bivouac toggle (12)
 
+enum class MapInventoryFilterButtons {
+    SaveTemplateButtonOn = 40,
+    SaveTemplateButtonOff = 41,
+    ReadTemplateButtonOn = 42,
+    ReadTemplateButtonOff = 43,
+    OpenBivouacOn = 44,
+    OpenBivouacOff = 45,
+    DropAllFromBivouacOn = 46,
+    DropAllFromBivouacOff = 47,
+};
+
+
 // number of inventory slots
 //#define MAP_INVENTORY_POOL_SLOT_COUNT				84	//45	//45
 

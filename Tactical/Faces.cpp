@@ -2057,13 +2057,66 @@ void HandleRenderFaceAdjustments(FACETYPE *pFace, BOOLEAN fDisplayBuffer, BOOLEA
 				bNumRightIcons++;
 			}
 			else */
-			if (MercDruggedButNotDrunk(MercPtrs[pFace->ubSoldierID]))
+
+			if (gGameSettings.fOptions[TOPTION_SHOW_EXTRA_ICONS] &&
+				gfAssignmentIconsX)
 			{
-				DoRightIcon(uiRenderBuffer, pFace, sFaceX, sFaceY, bNumRightIcons, 7);
-				bNumRightIcons++;
+				// sevenfm: use different icon for regen
+				if (pSoldier->bRegenerationCounter > 0)
+				{
+					DoRightIcon(uiRenderBuffer, pFace, sFaceX, sFaceY, bNumRightIcons, 57);
+					bNumRightIcons++;
+				}
+
+				// show side effect when no positive effects active
+				if (!MercDruggedButNotDrunk(MercPtrs[pFace->ubSoldierID], TRUE, FALSE) &&	// check we have no positive drug effect
+					MercDruggedButNotDrunk(MercPtrs[pFace->ubSoldierID], FALSE, TRUE))		// check we have drug side effect
+				{
+					DoRightIcon(uiRenderBuffer, pFace, sFaceX, sFaceY, bNumRightIcons, 56);
+					bNumRightIcons++;
+				}
+				// show icon when positive effect active except regen
+				else if (MercDruggedButNotDrunk(MercPtrs[pFace->ubSoldierID], TRUE, FALSE))		// check we have positive drug effect except for regen
+				{
+					DoRightIcon(uiRenderBuffer, pFace, sFaceX, sFaceY, bNumRightIcons, 7);
+					bNumRightIcons++;
+				}
+			}
+			else
+			{
+				if (MercDruggedButNotDrunk(MercPtrs[pFace->ubSoldierID]))				// default code
+				{
+					DoRightIcon(uiRenderBuffer, pFace, sFaceX, sFaceY, bNumRightIcons, 7);
+					bNumRightIcons++;
+				}
 			}
 
-			if (GetDrunkLevel(MercPtrs[pFace->ubSoldierID]) != SOBER)
+			// sevenfm: new icon for each drunk level
+			if (gGameSettings.fOptions[TOPTION_SHOW_EXTRA_ICONS] &&
+				gfAssignmentIconsX)
+			{
+				if (GetDrunkLevel(MercPtrs[pFace->ubSoldierID]) == HUNGOVER)
+				{
+					DoRightIcon(uiRenderBuffer, pFace, sFaceX, sFaceY, bNumRightIcons, 55);
+					bNumRightIcons++;
+				}
+				else if (GetDrunkLevel(MercPtrs[pFace->ubSoldierID]) == FEELING_GOOD)
+				{
+					DoRightIcon(uiRenderBuffer, pFace, sFaceX, sFaceY, bNumRightIcons, 8);
+					bNumRightIcons++;
+				}
+				else if (GetDrunkLevel(MercPtrs[pFace->ubSoldierID]) == BORDERLINE)
+				{
+					DoRightIcon(uiRenderBuffer, pFace, sFaceX, sFaceY, bNumRightIcons, 58);
+					bNumRightIcons++;
+				}
+				else if (GetDrunkLevel(MercPtrs[pFace->ubSoldierID]) == DRUNK)
+				{
+					DoRightIcon(uiRenderBuffer, pFace, sFaceX, sFaceY, bNumRightIcons, 59);
+					bNumRightIcons++;
+				}
+			}
+			else if (GetDrunkLevel(MercPtrs[pFace->ubSoldierID]) != SOBER)
 			{
 				DoRightIcon(uiRenderBuffer, pFace, sFaceX, sFaceY, bNumRightIcons, 8);
 				bNumRightIcons++;
@@ -2143,97 +2196,66 @@ void HandleRenderFaceAdjustments(FACETYPE *pFace, BOOLEAN fDisplayBuffer, BOOLEA
 				gfAssignmentIconsX)
 			{
 				// nervous and alone
-				if ((gMercProfiles[pSoldier->ubProfile].bDisability == NERVOUS || MercUnderTheInfluence(pSoldier, DRUG_TYPE_NERVOUS)) &&
-					pSoldier->aiData.bMorale < 50 &&
-					(pSoldier->ubGroupID != 0 && pSoldier->bAssignment < ON_DUTY && PlayerIDGroupInMotion(pSoldier->ubGroupID) && NumberOfPeopleInSquad(pSoldier->bAssignment) == 1 ||
-					pSoldier->bActive && pSoldier->bInSector && DistanceToClosestFriend(pSoldier) > NERVOUS_RADIUS ||
-					NumPlayerTeamMembersInSector(pSoldier->sSectorX, pSoldier->sSectorY, pSoldier->bSectorZ) == 1))
+				if (pSoldier->IsNervousAndAlone())
 				{
 					//DoRightIcon(uiRenderBuffer, pFace, sFaceX, sFaceY, bNumRightIcons, 40);
 					//bNumRightIcons++;
 				}
 
 				// sociable
-				if (pSoldier->bActive &&
-					pSoldier->bInSector &&
-					gMercProfiles[pSoldier->ubProfile].bCharacterTrait == CHAR_TRAIT_SOCIABLE)
+				if (pSoldier->IsSociableAndAlone())
 				{
-					INT8 bNumMercs = CheckMercsNearForCharTraits(pSoldier->ubProfile, CHAR_TRAIT_SOCIABLE);
-					if (bNumMercs == 0)	// -5
-					{
-						DoRightIcon(uiRenderBuffer, pFace, sFaceX, sFaceY, bNumRightIcons, 49);
-						bNumRightIcons++;
-					}
-					else if (bNumMercs == 1)	// -2
-					{
-						DoRightIcon(uiRenderBuffer, pFace, sFaceX, sFaceY, bNumRightIcons, 48);
-						bNumRightIcons++;
-					}
+					DoRightIcon(uiRenderBuffer, pFace, sFaceX, sFaceY, bNumRightIcons, 49);
+					bNumRightIcons++;
+				}
+				else if (pSoldier->IsSociableAndNotEnoughFriends())
+				{
+					DoRightIcon(uiRenderBuffer, pFace, sFaceX, sFaceY, bNumRightIcons, 48);
+					bNumRightIcons++;
 				}
 
 				// crowded
-				if (pSoldier->bActive &&
-					pSoldier->bInSector &&
-					gMercProfiles[pSoldier->ubProfile].bCharacterTrait == CHAR_TRAIT_LONER)
+				if (pSoldier->IsLonerAndCrowded())
 				{
-					INT8 bNumMercs = CheckMercsNearForCharTraits(pSoldier->ubProfile, CHAR_TRAIT_LONER);
-					if (bNumMercs > 1)
-					{
-						//DoRightIcon(uiRenderBuffer, pFace, sFaceX, sFaceY, bNumRightIcons, 41);
-						DoRightIcon(uiRenderBuffer, pFace, sFaceX, sFaceY, bNumRightIcons, 40);
-						bNumRightIcons++;
-					}
-					else if (bNumMercs == 1)
-					{
-						DoRightIcon(uiRenderBuffer, pFace, sFaceX, sFaceY, bNumRightIcons, 40);
-						bNumRightIcons++;
-					}
+					DoRightIcon(uiRenderBuffer, pFace, sFaceX, sFaceY, bNumRightIcons, 40);
+					bNumRightIcons++;
+				}
+				else if (pSoldier->IsLonerAndNotAlone())
+				{
+					DoRightIcon(uiRenderBuffer, pFace, sFaceX, sFaceY, bNumRightIcons, 40);
+					bNumRightIcons++;
 				}
 
 				// showoff
-				if (pSoldier->bActive &&
-					pSoldier->bInSector &&
-					IsShowOffNearBy(pSoldier))
+				if (pSoldier->IsShowOffFriendNearBy())
 				{
 					DoRightIcon(uiRenderBuffer, pFace, sFaceX, sFaceY, bNumRightIcons, 42);
 					bNumRightIcons++;
 				}
 
 				// heat intolerant
-				if (pSoldier->bActive &&
-					pSoldier->bInSector &&
-					(gMercProfiles[pSoldier->ubProfile].bDisability == HEAT_INTOLERANT || MercUnderTheInfluence(pSoldier, DRUG_TYPE_HEATINTOLERANT)) &&
-					MercIsHot(pSoldier))
+				if (pSoldier->IsHeatIntolerantActive())
 				{
 					DoRightIcon(uiRenderBuffer, pFace, sFaceX, sFaceY, bNumRightIcons, 43);
 					bNumRightIcons++;
 				}
 
 				// claustrophobic
-				if (pSoldier->bActive &&
-					pSoldier->bInSector &&
-					(gMercProfiles[pSoldier->ubProfile].bDisability == CLAUSTROPHOBIC || MercUnderTheInfluence(pSoldier, DRUG_TYPE_CLAUSTROPHOBIC)) &&
-					gbWorldSectorZ > 0)
+				if (pSoldier->IsClaustrophobicActive())
 				{
 					DoRightIcon(uiRenderBuffer, pFace, sFaceX, sFaceY, bNumRightIcons, 50);
 					bNumRightIcons++;
 				}
 
 				// fear of insects
-				if (pSoldier->bActive &&
-					pSoldier->bInSector &&
-					(gMercProfiles[pSoldier->ubProfile].bDisability == FEAR_OF_INSECTS || MercUnderTheInfluence(pSoldier, DRUG_TYPE_FEAROFINSECTS)) &&
-					MercSeesCreature(pSoldier))
+				if (pSoldier->IsFearOfInsectsActive())
 				{
 					DoRightIcon(uiRenderBuffer, pFace, sFaceX, sFaceY, bNumRightIcons, 51);
 					bNumRightIcons++;
 				}
 
 				// bloodlust
-				if (pSoldier->bActive &&
-					pSoldier->bInSector &&
-					pSoldier->usSkillCounter[SOLDIER_COUNTER_BLOODLUST] > 0 &&
-					pSoldier->HasBackgroundFlag(BACKGROUND_BLOODLUST))
+				if (pSoldier->IsBloodlustActive())
 				{
 					DoRightIcon(uiRenderBuffer, pFace, sFaceX, sFaceY, bNumRightIcons, 43 + min(3, pSoldier->usSkillCounter[SOLDIER_COUNTER_BLOODLUST]));
 					bNumRightIcons++;
@@ -2247,12 +2269,12 @@ void HandleRenderFaceAdjustments(FACETYPE *pFace, BOOLEAN fDisplayBuffer, BOOLEA
 				}
 
 				// overweight
-				if (CalculateCarriedWeight(pSoldier, TRUE) > 150)
+				if (pSoldier->IsOverweightHeavy())
 				{
 					DoRightIcon(uiRenderBuffer, pFace, sFaceX, sFaceY, bNumRightIcons, 54);
 					++bNumRightIcons;
 				}
-				else if (CalculateCarriedWeight(pSoldier, TRUE) > 100)
+				else if (pSoldier->IsOverweight())
 				{
 					DoRightIcon(uiRenderBuffer, pFace, sFaceX, sFaceY, bNumRightIcons, 53);
 					++bNumRightIcons;
