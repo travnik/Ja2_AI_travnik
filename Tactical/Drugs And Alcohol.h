@@ -102,9 +102,11 @@ void HandleDamageResistanceEffectDueToDrugs( SOLDIERTYPE *pSoldier, INT32 *psPoi
 INT8 GetDrunkLevel( SOLDIERTYPE *pSoldier );
 INT32 EffectStatForBeingDrunk( SOLDIERTYPE *pSoldier, INT32 iStat );
 BOOLEAN MercUnderTheInfluence( SOLDIERTYPE *pSoldier );
-BOOLEAN MercUnderTheInfluence( SOLDIERTYPE *pSoldier, UINT8 aDrugType );
-BOOLEAN MercDruggedButNotDrunk( SOLDIERTYPE *pSoldier );
+BOOLEAN MercUnderTheInfluence(SOLDIERTYPE *pSoldier, UINT8 aDrugType, BOOLEAN fMainOnly = FALSE, BOOLEAN fSideOnly = FALSE);
+BOOLEAN MercDruggedButNotDrunk(SOLDIERTYPE *pSoldier, BOOLEAN fMainOnly = FALSE, BOOLEAN fSideOnly = FALSE);
 
 void HourlyDrugUpdate();
+
+void PrintDrugEffectsStr(SOLDIERTYPE *pSoldier, CHAR16 str[]);
 
 #endif
