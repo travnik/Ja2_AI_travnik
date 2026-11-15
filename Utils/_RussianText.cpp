@@ -2411,25 +2411,6 @@ STR16 pRadioNumberMenuStrings[] =
 	L"Отмена",
 };
 
-STR16 pRadioMenuStrings[] =
-{
-	L"Радио-сканирование",
-	L"Вызвать ополчение",
-	L"Отмена",
-};
-
-STR16 pRadioNumberMenuStrings[] =
-{
-	L"5",
-	L"10",
-	L"15",
-	L"20",
-	L"30",
-	L"40",
-	L"Все",
-	L"Отмена",
-};
-
 STR16 pSnitchMenuStrings[] =
 {
 	// snitch

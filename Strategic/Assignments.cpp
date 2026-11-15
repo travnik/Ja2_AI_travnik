@@ -2327,40 +2327,6 @@ BOOLEAN CanCharacterCallMilitia( SOLDIERTYPE *pSoldier )
 		return( FALSE );
 	}
 
-BOOLEAN CanCharacterCallMilitia( SOLDIERTYPE *pSoldier )
-{
-	AssertNotNIL(pSoldier);
-
-	if ( !gGameExternalOptions.gfAllowReinforcements )
-	{
-		return( FALSE );
-	}
-
-	if ( !BasicCanCharacterAssignment( pSoldier, TRUE ) )
-	{
-		return( FALSE );
-	}
-
-	if ( pSoldier->stats.bLife < OKLIFE )
-	{
-		return( FALSE );
-	}
-
-	if ( pSoldier->bSectorZ != 0 )
-	{
-		return( FALSE );
-	}
-
-	if ( IsCharacterInTransit( pSoldier ) == TRUE )
-	{
-		return( FALSE );
-	}
-
-	if ( CharacterIsBetweenSectors( pSoldier ) )
-	{
-		return( FALSE );
-	}
-
 	if ( pSoldier->ubWhatKindOfMercAmI == MERC_TYPE__EPC )
 	{
 		return( FALSE );

@@ -71,34 +71,34 @@
     <Import Project="ja2.props" />
     <Import Project="ja2_Debug.props" />
     <Import Project="ja2_Libs.props" />
-    <Import Project="ja2_LinkerVS2013.props" />
+    <Import Project="ja2_LinkerVS2022.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='MapEditorD|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="ja2.props" />
     <Import Project="ja2_Debug.props" />
     <Import Project="ja2_Libs.props" />
-    <Import Project="ja2_LinkerVS2013.props" />
+    <Import Project="ja2_LinkerVS2022.props" />
     <Import Project="ja2_Editor.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="ja2.props" />
     <Import Project="ja2_Libs.props" />
-    <Import Project="ja2_LinkerVS2013.props" />
+    <Import Project="ja2_LinkerVS2022.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='MapEditor|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="ja2.props" />
     <Import Project="ja2_Libs.props" />
-    <Import Project="ja2_LinkerVS2013.props" />
+    <Import Project="ja2_LinkerVS2022.props" />
     <Import Project="ja2_Editor.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release_WithDebugInfo|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="ja2.props" />
     <Import Project="ja2_Libs.props" />
-    <Import Project="ja2_LinkerVS2013.props" />
+    <Import Project="ja2_LinkerVS2022.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -345,7 +345,7 @@
     <None Include="Res\jagged3.ico" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="ModularizedTacticalAI\ModularizedTacticalAI_VS2013.vcxproj">
+    <ProjectReference Include="ModularizedTacticalAI\ModularizedTacticalAI_VS2022.vcxproj">
       <Project>{ff0a809e-a370-4640-a301-17b76d7a5b4e}</Project>
     </ProjectReference>
   </ItemGroup>
