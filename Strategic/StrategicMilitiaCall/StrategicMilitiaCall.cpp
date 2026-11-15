@@ -59,14 +59,14 @@ void StrategicMilitiaCall::FinishRadioBoxSetup(INT32 hBox) {
 }
 
 BOOLEAN StrategicMilitiaCall::CanCharacterCallMilitia(SOLDIERTYPE* pSoldier) {
-	if (!pSoldier || !gGameExternalOptions.gfAllowReinforcements) 
-    return FALSE;
+	if (!pSoldier || !gGameExternalOptions.gfAllowReinforcements)
+		return FALSE;
 	if (pSoldier->stats.bLife < OKLIFE || pSoldier->bSectorZ != 0)
-    return FALSE;
-	if (IsCharacterInTransit(pSoldier) || pSoldier->flags.fBetweenSectors) 
-    return FALSE;
-	if (pSoldier->ubWhatKindOfMercAmI == MERC_TYPE__EPC) 
-    return FALSE;
+		return FALSE;
+	if (IsCharacterInTransit(pSoldier) || pSoldier->flags.fBetweenSectors)
+		return FALSE;
+	if (pSoldier->ubWhatKindOfMercAmI == MERC_TYPE__EPC)
+		return FALSE;
 
 	if (pSoldier->bAssignment == VEHICLE) {
 		if ((iHelicopterVehicleId != -1) && (pSoldier->iVehicleId == iHelicopterVehicleId)) {
@@ -84,8 +84,8 @@ UINT16 StrategicMilitiaCall::CountAllMilitiaInSector(INT16 sMapX, INT16 sMapY) {
 }
 
 BOOLEAN StrategicMilitiaCall::ExecuteStrategicMilitiaCall(SOLDIERTYPE* pSoldier, UINT16 usNumber) {
-	if (!pSoldier || usNumber == 0 || m_usRadioSelectedSector == 0xFFFF) 
-    return FALSE;
+	if (!pSoldier || usNumber == 0 || m_usRadioSelectedSector == 0xFFFF)
+		return FALSE;
 
 	INT16 sSrcX = SECTORX(m_usRadioSelectedSector);
 	INT16 sSrcY = SECTORY(m_usRadioSelectedSector);
@@ -123,22 +123,15 @@ BOOLEAN StrategicMilitiaCall::ExecuteStrategicMilitiaCall(SOLDIERTYPE* pSoldier,
 }
 
 void StrategicMilitiaCall::CreateRadioBox() {
-	// safety: never leak a slot if the previous box was not removed
-	if (m_hRadioBox != -1) 
-  { 
-		HideBox(m_hRadioBox);
-    RemoveBox(m_hRadioBox);
-    m_hRadioBox = -1;
-  }
-
-	UINT32 hStringHandle;
-	// safety: never leak a slot if the previous box was not removed
+	// sevenfm: qwen proposed fix for popup crash
+	// Çàùèòà îò óòå÷êè: åñëè îêíî óæå ñóùåñòâóåò (handle != -1), óäàëÿåì åãî ïåðåä ñîçäàíèåì íîâîãî
 	if (m_hRadioBox != -1)
 	{
-		HideBox(m_hRadioBox);
 		RemoveBox(m_hRadioBox);
 		m_hRadioBox = -1;
 	}
+
+	UINT32 hStringHandle;
 	CreatePopUpBox(&m_hRadioBox, RadioDimensions, RadioPosition, (POPUP_BOX_FLAG_CLIP_TEXT | POPUP_BOX_FLAG_CENTER_TEXT | POPUP_BOX_FLAG_RESIZE));
 	ghRadioBox = m_hRadioBox;
 
@@ -157,13 +150,12 @@ void StrategicMilitiaCall::CreateRadioSectorBox() {
 	// sevenfm: qwen proposed fix for popup crash
 	// Çàùèòà îò óòå÷êè: åñëè îêíî óæå ñóùåñòâóåò (handle != -1), óäàëÿåì åãî ïåðåä ñîçäàíèåì íîâîãî
 	if (m_hRadioSectorBox != -1)
-  {
-    RemoveBox(m_hRadioSectorBox);
-    m_hRadioSectorBox = -1;
-  }
+	{
+		RemoveBox(m_hRadioSectorBox);
+		m_hRadioSectorBox = -1;
+	}
 
 	UINT32 hStringHandle;
-	if (m_hRadioSectorBox != -1) { HideBox(m_hRadioSectorBox); RemoveBox(m_hRadioSectorBox); m_hRadioSectorBox = -1; }
 	CreatePopUpBox(&m_hRadioSectorBox, RadioSectorDimensions, RadioSectorPosition, (POPUP_BOX_FLAG_CLIP_TEXT | POPUP_BOX_FLAG_CENTER_TEXT | POPUP_BOX_FLAG_RESIZE));
 	ghRadioSectorBox = m_hRadioSectorBox;
 
@@ -183,14 +175,13 @@ void StrategicMilitiaCall::CreateRadioSectorBox() {
 void StrategicMilitiaCall::CreateRadioNumberBox() {
 	// sevenfm: qwen proposed fix for popup crash
 	// Çàùèòà îò óòå÷êè: åñëè îêíî óæå ñóùåñòâóåò (handle != -1), óäàëÿåì åãî ïåðåä ñîçäàíèåì íîâîãî
-	if (m_hRadioNumberBox != -1) 
-  { 
-    RemoveBox(m_hRadioNumberBox);
-    m_hRadioNumberBox = -1;
-  }
+	if (m_hRadioNumberBox != -1)
+	{
+		RemoveBox(m_hRadioNumberBox);
+		m_hRadioNumberBox = -1;
+	}
 
 	UINT32 hStringHandle;
-	if (m_hRadioNumberBox != -1) { HideBox(m_hRadioNumberBox); RemoveBox(m_hRadioNumberBox); m_hRadioNumberBox = -1; }
 	CreatePopUpBox(&m_hRadioNumberBox, RadioNumberDimensions, RadioNumberPosition, (POPUP_BOX_FLAG_CLIP_TEXT | POPUP_BOX_FLAG_CENTER_TEXT | POPUP_BOX_FLAG_RESIZE));
 	ghRadioNumberBox = m_hRadioNumberBox;
 
@@ -211,8 +202,8 @@ void StrategicMilitiaCall::RebuildRadioSectorBox(SOLDIERTYPE* pSoldier) {
 	static const INT16 sDeltaX[MilitiaCall::NUM_SECTOR_LINES] = { 0, 1, 0, -1 };
 	static const INT16 sDeltaY[MilitiaCall::NUM_SECTOR_LINES] = { 1, 0, -1, 0 };
 
-	if ((pSoldier == NULL) || (m_hRadioSectorBox == -1)) 
-    return;
+	if ((pSoldier == NULL) || (m_hRadioSectorBox == -1))
+		return;
 
 	SetCurrentBox(m_hRadioSectorBox);
 	RemoveAllCurrentBoxStrings();
@@ -246,7 +237,7 @@ void StrategicMilitiaCall::PositionMenus(INT16 sBaseX, INT16 sBaseY) {
 	SGPPoint pPos1, pPos3, pNewPoint;
 
 	if (m_hRadioBox == -1)
-    return;
+		return;
 
 	GetBoxSize(ghAssignmentBox, &pDim1);
 	pNewPoint.iX = sBaseX + pDim1.iRight;
@@ -289,7 +280,7 @@ void StrategicMilitiaCall::PositionMenus(INT16 sBaseX, INT16 sBaseY) {
 
 void StrategicMilitiaCall::HandleShadingOfLinesForRadioMenu(SOLDIERTYPE* pSoldier) {
 	if ((fShowRadioMenu == FALSE) || (m_hRadioBox == -1))
-    return;
+		return;
 
 	if (pSoldier && pSoldier->CanUseRadio()) {
 		UnShadeStringInBox(m_hRadioBox, RADIO_MENU_SCAN);
@@ -308,7 +299,7 @@ void StrategicMilitiaCall::HandleShadingOfLinesForRadioMenu(SOLDIERTYPE* pSoldie
 
 void StrategicMilitiaCall::HandleShadingOfLinesForRadioSectorMenu() {
 	if (m_hRadioSectorBox == -1)
-    return;
+		return;
 
 	for (INT32 i = 0; i < MilitiaCall::NUM_SECTOR_LINES; i++) {
 		UINT16 usSector = m_usRadioSectorLine[i];
@@ -325,8 +316,8 @@ void StrategicMilitiaCall::HandleShadingOfLinesForRadioNumberMenu() {
 	static const UINT16 usRadioNumbers[MilitiaCall::NUM_MENU_ALL] = { 5, 10, 15, 20, 30, 40 };
 	UINT32 uiMilitia = 0;
 
-	if (m_hRadioNumberBox == -1) 
-    return;
+	if (m_hRadioNumberBox == -1)
+		return;
 
 	if (m_usRadioSelectedSector != 0xFFFF) {
 		uiMilitia = CountAllMilitiaInSector(SECTORX(m_usRadioSelectedSector), SECTORY(m_usRadioSelectedSector));

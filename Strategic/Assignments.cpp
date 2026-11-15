@@ -205,7 +205,7 @@ INT32 ghSnitchBox = -1;
 INT32 ghSnitchToggleBox = -1;
 INT32 ghSnitchSectorBox = -1;
 
-// Переменные-прокси для совместимости с оригинальными файлами игры
+// ����������-������ ��� ������������� � ������������� ������� ����
 INT32 ghRadioBox = -1;
 INT32 ghRadioSectorBox = -1;
 INT32 ghRadioNumberBox = -1;
@@ -2292,6 +2292,40 @@ BOOLEAN CanCharacterSnitch( SOLDIERTYPE *pSoldier )
 
 	return( FALSE );
 }
+
+BOOLEAN CanCharacterCallMilitia( SOLDIERTYPE *pSoldier )
+{
+	AssertNotNIL(pSoldier);
+
+	if ( !gGameExternalOptions.gfAllowReinforcements )
+	{
+		return( FALSE );
+	}
+
+	if ( !BasicCanCharacterAssignment( pSoldier, TRUE ) )
+	{
+		return( FALSE );
+	}
+
+	if ( pSoldier->stats.bLife < OKLIFE )
+	{
+		return( FALSE );
+	}
+
+	if ( pSoldier->bSectorZ != 0 )
+	{
+		return( FALSE );
+	}
+
+	if ( IsCharacterInTransit( pSoldier ) == TRUE )
+	{
+		return( FALSE );
+	}
+
+	if ( CharacterIsBetweenSectors( pSoldier ) )
+	{
+		return( FALSE );
+	}
 
 BOOLEAN CanCharacterCallMilitia( SOLDIERTYPE *pSoldier )
 {
@@ -15419,7 +15453,7 @@ BOOLEAN HandleAssignmentExpansionAndHighLightForRadioSectorMenu(void)
 {
 	if (fShowRadioNumberMenu)
 	{
-		// ИСПРАВЛЕНИЕ: Берем ID бокса и индекс подсвеченной строки напрямую из класса фичи
+		// �����������: ����� ID ����� � ������ ������������ ������ �������� �� ������ ����
 		INT32 hSectorBox = g_StrategicMilitiaCall.GetSectorBoxID();
 		INT32 iHighLine = g_StrategicMilitiaCall.GetSectorMenuHighLine();
 

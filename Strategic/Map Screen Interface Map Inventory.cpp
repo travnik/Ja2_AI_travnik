@@ -2137,6 +2137,9 @@ extern void EquipmentListMenuCancel();
 // Flugente: 
 extern void EquipmentListMenuCancel();
 
+// Flugente: 
+extern void EquipmentListMenuCancel();
+
 void DestroyMapInventoryButtons( void )
 {
 	// Page Arrow Buttons

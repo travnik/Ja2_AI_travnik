@@ -53,6 +53,7 @@ bin/
 *.sdf
 *.opensdf
 .vs/
+.editorconfig
 
 # ==========================================
 # Сторонние библиотеки (Опционально)
@@ -65,3 +66,6 @@ bin/
 /vs
 /Python
 /.idea
+/.opencode/instructions
+/opencode.jsonc
+/sourcecraft_history.md

@@ -270,6 +270,9 @@
     <ClInclude Include="SkillMenu.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ArtillerySAM.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="LogicalBodyTypes\AbstractXMLLoader.h">
       <Filter>Logical Bodytypes</Filter>
     </ClInclude>
@@ -313,7 +316,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CraftInfo.h" />
-    <ClInclude Include="SquadBivouacManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Air Raid.cpp">
@@ -709,9 +711,6 @@
     <ClCompile Include="XML_Keys.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="XML_BivouacSlots.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="XML_Locks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -761,6 +760,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CraftInfo.cpp" />
-    <ClCompile Include="SquadBivouacManager.cpp" />
+    <ClCompile Include="ArtillerySAM.cpp" />
   </ItemGroup>
 </Project>

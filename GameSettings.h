@@ -284,6 +284,14 @@ bool UsingNewCTHSystem();
 BOOLEAN UsingFoodSystem();
 BOOLEAN IsNIVModeValid(bool checkRes = true);
 
+// travnik: hourly quest update mode values (HOURLY_QUEST_UPDATE_MODE ini setting)
+enum HOURLY_QUEST_UPDATE_MODES
+{
+	HOURLY_QUEST_CPP_ONLY = 0,		// (default) hardcoded C++ code only, lua is not called
+	HOURLY_QUEST_CPP_AND_LUA,		// C++ code, supplemented by lua script (HourlyUpdate.lua)
+	HOURLY_QUEST_LUA_ONLY,			// lua script completely replaces C++ code (script has to be present, otherwise C++ code is used)
+};
+
 // Snap: Options read from an INI file in the default of custom Data directory
 typedef struct
 {
@@ -309,6 +317,10 @@ typedef struct
 
 	// SANDRO was here - some changes done
 	INT32 iIMPProfileCost;
+	// travnik: бюджет снаряжения IMP в магазине (0 = равен цене профиля)
+	INT32 iIMPShopGearBudget;
+	// travnik: режим ассортимента IMP (0 = IMPShopItems.xml, 1..10 = дополнительно Items.xml)
+	INT32 iIMPShopCoolness;
 	BOOLEAN fDynamicIMPProfileCost;
 	INT32 iMinAttribute;
 	INT32 iMaxAttribute;
@@ -559,6 +571,9 @@ typedef struct
 	// WDS - Automatically try to save when an assertion failure occurs
 	BOOLEAN autoSaveOnAssertionFailure;
 	UINT32  autoSaveTime;
+
+	// travnik: hourly quest update mode (HOURLY_QUEST_UPDATE_MODES)
+	UINT32  ubHourlyQuestUpdateMode;
 
 	//JMich
 	UINT16 guiMaxWeaponSize;
@@ -1563,6 +1578,9 @@ typedef struct
 	UINT16	usBivouacMoveMinMercs;				// minimal live mercs in a squad with a non-empty bivouac to move between sectors
 	UINT16	usBivouacSlotDefaultPocket;			// SQUAD_BIVOUAC: default pocket template index (Pockets.xml pIndex) for slots missing from BivouacSlots.xml, 255 = slot disabled
 
+	// Lua 1.13 port: can extra civilians be created via LUA?
+	BOOLEAN bExtraCivilians;
+
 } GAME_EXTERNAL_OPTIONS;
 
 typedef struct
@@ -1983,6 +2001,14 @@ typedef struct
 	UINT32 usVOArtilleryAmmoCost[5];
 	UINT8 ubVOArtilleryAmmoMinProgress[5];
 	INT32 sVOArtilleryAmmoCostProgress[5];
+	// travnik: artillery strike via captured SAM site
+	BOOLEAN fROSAMArtillery;						// SAM artillery enabled at all
+	UINT8 ubVOSAMArtilleryAmmoType;					// shell type, see ARTILLERY_AMMO_* enum
+	UINT8 ubVOSAMArtilleryMortars;					// number of mortars (1-4), determines wave size
+	UINT16 usVOSAMArtilleryWaves;					// number of waves
+	UINT32 usVOSAMArtilleryCost;					// base cost for player strikes
+	UINT8 ubVOSAMArtilleryMinProgress;				// min player progress for player strikes
+	INT32 sVOSAMArtilleryCostProgress;				// cost change in % of base cost at 100% progress
 	INT8  sVOScanAssignmentBaseRange;
 	INT8  sVOListeningHearingBonus;
 	BOOLEAN fVOJammingBlocksRemoteBombs;

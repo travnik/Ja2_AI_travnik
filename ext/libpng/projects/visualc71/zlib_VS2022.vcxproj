@@ -119,28 +119,28 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>..\..\..\..\lib\VS2013\$(Configuration)\</OutDir>
-    <IntDir>..\..\..\..\build\VS2013\$(ProjectName)_$(Configuration)\</IntDir>
+    <OutDir>..\..\..\..\lib\VS2022\$(Configuration)\</OutDir>
+    <IntDir>..\..\..\..\build\VS2022\$(ProjectName)_$(Configuration)\</IntDir>
     <IncludePath>c:\Dev\Visual Leak Detector\Include;$(IncludePath)</IncludePath>
     <LibraryPath>c:\Dev\Visual Leak Detector\lib\Win32;c:\Dev\Visual Leak Detector\lib\Win64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='MapEditorD|Win32'">
-    <OutDir>..\..\..\..\lib\VS2013\$(Configuration)\</OutDir>
-    <IntDir>..\..\..\..\build\VS2013\$(ProjectName)_$(Configuration)\</IntDir>
+    <OutDir>..\..\..\..\lib\VS2022\$(Configuration)\</OutDir>
+    <IntDir>..\..\..\..\build\VS2022\$(ProjectName)_$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>..\..\..\..\lib\VS2013\$(Configuration)\</OutDir>
-    <IntDir>..\..\..\..\build\VS2013\$(ProjectName)_$(Configuration)\</IntDir>
+    <OutDir>..\..\..\..\lib\VS2022\$(Configuration)\</OutDir>
+    <IntDir>..\..\..\..\build\VS2022\$(ProjectName)_$(Configuration)\</IntDir>
     <IncludePath>c:\Dev\Visual Leak Detector\include;$(IncludePath)</IncludePath>
     <LibraryPath>c:\Dev\Visual Leak Detector\lib\Win32;c:\Dev\Visual Leak Detector\lib\Win64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='MapEditor|Win32'">
-    <OutDir>..\..\..\..\lib\VS2013\$(Configuration)\</OutDir>
-    <IntDir>..\..\..\..\build\VS2013\$(ProjectName)_$(Configuration)\</IntDir>
+    <OutDir>..\..\..\..\lib\VS2022\$(Configuration)\</OutDir>
+    <IntDir>..\..\..\..\build\VS2022\$(ProjectName)_$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_WithDebugInfo|Win32'">
-    <OutDir>..\..\..\..\lib\VS2013\$(Configuration)\</OutDir>
-    <IntDir>..\..\..\..\build\VS2013\$(ProjectName)_$(Configuration)\</IntDir>
+    <OutDir>..\..\..\..\lib\VS2022\$(Configuration)\</OutDir>
+    <IntDir>..\..\..\..\build\VS2022\$(ProjectName)_$(Configuration)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
