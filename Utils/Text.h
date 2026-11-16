@@ -174,6 +174,7 @@ enum
 	SKILLMENU_ARTILLERY_TEARGAS,
 	SKILLMENU_ARTILLERY_MUSTARDGAS,
 	SKILLMENU_ARTILLERY_NAPALM,
+	SKILLMENU_SAM_SITE,		// travnik: artillery strike via captured SAM site
 };
 
 extern STR16 pSkillMenuStrings[];			//Flugente
@@ -2609,6 +2610,10 @@ enum
 	MSG113_ARTILLERY_AMMO_UNAVAILABLE,
 	MSG113_ARTILLERY_NOT_ENOUGH_MONEY,
 
+	// travnik: artillery strike via captured SAM site
+	MSG113_SAM_ARTILLERY_UNAVAILABLE,
+	MSG113_ARTILLERY_NOT_READY_YET,
+
 	TEXT_NUM_MSG113,
 };
 
@@ -3068,4 +3073,7 @@ void this_is_the_Ja25ItalianText_public_symbol(void);
 void this_is_the_Ja25PolishText_public_symbol(void);
 // Flugente: gear templates
 extern STR16 szGearTemplateText[];
+// Flugente: IMP gear selection
+extern STR16	szIMPGearWebSiteText[];
+extern STR16	szIMPGearPocketText[];
 void this_is_the_Ja25RussianText_public_symbol(void);

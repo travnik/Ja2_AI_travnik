@@ -270,6 +270,9 @@
     <ClInclude Include="SkillMenu.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ArtillerySAM.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="LogicalBodyTypes\AbstractXMLLoader.h">
       <Filter>Logical Bodytypes</Filter>
     </ClInclude>
@@ -761,6 +764,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CraftInfo.cpp" />
-    <ClCompile Include="SquadBivouacManager.cpp" />
+    <ClCompile Include="ArtillerySAM.cpp" />
   </ItemGroup>
 </Project>
