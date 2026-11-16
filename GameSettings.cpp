@@ -1887,6 +1887,9 @@ void LoadGameExternalOptions()
 
 	// travnik: коэффициент увеличения выкупа в зависимости от прогресса игры
 	gGameExternalOptions.fPrisonerRansomProgressCoefficient			= iniReader.ReadFloat("Strategic Gameplay Settings","PRISONER_RANSOM_PROGRESS_COEFFICIENT", 1.0f, 0.0f, 10.0f);
+
+	// travnik: защита результата допроса от повторного броска после Save/Load
+	gGameExternalOptions.fPrisonerInterrogationSaveLoadProtection = iniReader.ReadBoolean("Strategic Gameplay Settings","PRISONER_INTERROGATION_SAVELOAD_PROTECTION", TRUE);
 		
 	// CHRISL: Determine how Skyrider should handle landing in enemy occupied sectors
 	gGameExternalOptions.ubSkyriderHotLZ					= iniReader.ReadInteger("Strategic Gameplay Settings", "ALLOW_SKYRIDER_HOT_LZ", 0, 0, 3);
