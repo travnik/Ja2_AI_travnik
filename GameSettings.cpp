@@ -939,6 +939,11 @@ void LoadGameExternalOptions()
 	//I.M.P Character generation
 	// SANDRO - some changes here
 	gGameExternalOptions.iIMPProfileCost				 = iniReader.ReadInteger("Recruitment Settings","IMP_PROFILE_COST",3000, 0, 500000);
+	// travnik: бюджет снаряжения IMP; 0 - использовать цену профиля как раньше
+	gGameExternalOptions.iIMPShopGearBudget			 = iniReader.ReadInteger("Recruitment Settings","IMP_SHOP_GEAR_BUDGET",5000, 0, 500000);
+	// travnik: режим ассортимента IMP; 0 - только IMPShopItems.xml,
+	// 1..10 - дополнительно предметы Items.xml с крутостью не выше значения
+	gGameExternalOptions.iIMPShopCoolness				 = iniReader.ReadInteger("Recruitment Settings","IMP_SHOP_COOLNESS",0, 0, 10);
 	gGameExternalOptions.fDynamicIMPProfileCost			 = iniReader.ReadBoolean("Recruitment Settings","DYNAMIC_IMP_PROFILE_COST",FALSE);
 	gGameExternalOptions.iImpAttributePoints				= iniReader.ReadInteger("Recruitment Settings","IMP_INITIAL_POINTS",500, 1, 5000);
 	gGameExternalOptions.iMinAttribute						= iniReader.ReadInteger("Recruitment Settings","IMP_MIN_ATTRIBUTE",35, 1, 99);
@@ -1044,6 +1049,9 @@ void LoadGameExternalOptions()
 	// WDS - Automatically try to save when an assertion failure occurs
 	gGameExternalOptions.autoSaveOnAssertionFailure		= iniReader.ReadBoolean("Troubleshooting Settings","AUTO_SAVE_ON_ASSERTION_FAILURE", FALSE);
 	gGameExternalOptions.autoSaveTime 					= iniReader.ReadInteger("Troubleshooting Settings","AUTO_SAVE_EVERY_N_HOURS", 6, 0, 24);
+
+	// travnik: hourly quest update mode (see HOURLY_QUEST_UPDATE_MODES in GameSettings.h)
+	gGameExternalOptions.ubHourlyQuestUpdateMode		= iniReader.ReadInteger("Script Settings","HOURLY_QUEST_UPDATE_MODE", HOURLY_QUEST_CPP_ONLY, HOURLY_QUEST_CPP_ONLY, HOURLY_QUEST_LUA_ONLY);
 
 	//################# Graphics Settings #################
 	gGameExternalOptions.gfVSync = iniReader.ReadBoolean("Graphics Settings","VERTICAL_SYNC",0);
@@ -2417,6 +2425,9 @@ void LoadGameExternalOptions()
 	gGameExternalOptions.usBivouacMoveMinMercs = (UINT16)iniReader.ReadInteger("Extended Options", "BIVOUAC_MOVE_MIN_MERCS", 2, 1, 20);
 	// SQUAD_BIVOUAC: default pocket template (Pockets.xml pIndex) for slots missing from BivouacSlots.xml
 	gGameExternalOptions.usBivouacSlotDefaultPocket = (UINT16)iniReader.ReadInteger("Extended Options", "BIVOUAC_SLOT_DEFAULT_POCKET", 255, 0, 255);
+
+	// Lua 1.13 port: can extra civilians be created via LUA?
+	gGameExternalOptions.bExtraCivilians = iniReader.ReadBoolean( "Tactical Interface Settings", "ALLOW_EXTRA_CIVILIANS", FALSE, false );
 }
 
 // SANDRO - externalization of all skill trait values and STOMP settings into separate file
@@ -2736,6 +2747,15 @@ void LoadSkillTraitsExternalSettings()
 	gSkillTraitValues.sVOArtilleryAmmoCostProgress[2]	= iniReader.ReadInteger("Radio Operator","RADIO_OPERATOR_MILITIA_ARTILLERY_TEARGAS_COST_PROGRESS",		100, -100, 1000);
 	gSkillTraitValues.sVOArtilleryAmmoCostProgress[3]	= iniReader.ReadInteger("Radio Operator","RADIO_OPERATOR_MILITIA_ARTILLERY_MUSTARDGAS_COST_PROGRESS",	100, -100, 1000);
 	gSkillTraitValues.sVOArtilleryAmmoCostProgress[4]	= iniReader.ReadInteger("Radio Operator","RADIO_OPERATOR_MILITIA_ARTILLERY_NAPALM_COST_PROGRESS",		100, -100, 1000);
+
+	// travnik: artillery strike via captured SAM site
+	gSkillTraitValues.fROSAMArtillery				= iniReader.ReadBoolean("Radio Operator","RADIO_OPERATOR_SAM_ARTILLERY",					TRUE, false);
+	gSkillTraitValues.ubVOSAMArtilleryAmmoType		= iniReader.ReadInteger("Radio Operator","RADIO_OPERATOR_SAM_ARTILLERY_AMMO_TYPE",			0, 0, 4);
+	gSkillTraitValues.ubVOSAMArtilleryMortars		= iniReader.ReadInteger("Radio Operator","RADIO_OPERATOR_SAM_ARTILLERY_MORTARS",			4, 1, 4);
+	gSkillTraitValues.usVOSAMArtilleryWaves			= iniReader.ReadInteger("Radio Operator","RADIO_OPERATOR_SAM_ARTILLERY_WAVES",				3, 1, 20);
+	gSkillTraitValues.usVOSAMArtilleryCost			= iniReader.ReadInteger("Radio Operator","RADIO_OPERATOR_SAM_ARTILLERY_COST",				2000, 0, 1000000);
+	gSkillTraitValues.ubVOSAMArtilleryMinProgress	= iniReader.ReadInteger("Radio Operator","RADIO_OPERATOR_SAM_ARTILLERY_MIN_PROGRESS",		0, 0, 100);
+	gSkillTraitValues.sVOSAMArtilleryCostProgress	= iniReader.ReadInteger("Radio Operator","RADIO_OPERATOR_SAM_ARTILLERY_COST_PROGRESS",		100, -100, 1000);
 
 	gSkillTraitValues.sVOScanAssignmentBaseRange		= iniReader.ReadInteger("Radio Operator","RADIO_OPERATOR_ASSIGNMENT_SCAN_BASE_RANGE",	 5, 0, 20);
 	gSkillTraitValues.sVOListeningHearingBonus			= iniReader.ReadInteger("Radio Operator","RADIO_OPERATOR_LISTENING_HEARING_BONUS",		20, 0, 100);

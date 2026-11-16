@@ -82,6 +82,9 @@
     <ClInclude Include="IMP Personality Quiz.h" />
     <ClInclude Include="IMP Portraits.h" />
     <ClInclude Include="IMP Prejudice.h" />
+    <ClInclude Include="IMP Gear.h" />
+    <ClInclude Include="IMP Shop Assortment.h" />
+    <ClInclude Include="IMP Gear Entrance.h" />
     <ClInclude Include="IMP Skill Trait.h" />
     <ClInclude Include="IMP Text System.h" />
     <ClInclude Include="IMP Voices.h" />
@@ -163,6 +166,9 @@
     <ClCompile Include="IMP Personality Quiz.cpp" />
     <ClCompile Include="IMP Portraits.cpp" />
     <ClCompile Include="IMP Prejudice.cpp" />
+    <ClCompile Include="IMP Gear.cpp" />
+    <ClCompile Include="IMP Shop Assortment.cpp" />
+    <ClCompile Include="IMP Gear Entrance.cpp" />
     <ClCompile Include="IMP Skill Trait.cpp" />
     <ClCompile Include="IMP Text System.cpp" />
     <ClCompile Include="IMP Voices.cpp" />
@@ -198,6 +204,7 @@
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>Laptop</RootNamespace>
     <ProjectName>Laptop</ProjectName>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -262,28 +269,28 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>$(SolutionDir)\lib\VS2013\$(JA2Config)_$(JA2LangPrefix)\$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)\build\VS2013\$(JA2Config)_$(JA2LangPrefix)\$(ProjectName)_$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)\lib\VS2022\$(JA2Config)_$(JA2LangPrefix)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)\build\VS2022\$(JA2Config)_$(JA2LangPrefix)\$(ProjectName)_$(Configuration)\</IntDir>
     <IncludePath>c:\Dev\Visual Leak Detector\Include;$(IncludePath)</IncludePath>
     <LibraryPath>c:\Dev\Visual Leak Detector\lib\Win32;c:\Dev\Visual Leak Detector\lib\Win64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='MapEditorD|Win32'">
-    <OutDir>$(SolutionDir)\lib\VS2013\$(JA2Config)_$(JA2LangPrefix)\$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)\build\VS2013\$(JA2Config)_$(JA2LangPrefix)\$(ProjectName)_$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)\lib\VS2022\$(JA2Config)_$(JA2LangPrefix)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)\build\VS2022\$(JA2Config)_$(JA2LangPrefix)\$(ProjectName)_$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>$(SolutionDir)\lib\VS2013\$(JA2Config)_$(JA2LangPrefix)\$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)\build\VS2013\$(JA2Config)_$(JA2LangPrefix)\$(ProjectName)_$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)\lib\VS2022\$(JA2Config)_$(JA2LangPrefix)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)\build\VS2022\$(JA2Config)_$(JA2LangPrefix)\$(ProjectName)_$(Configuration)\</IntDir>
     <IncludePath>c:\Dev\Visual Leak Detector\include;$(IncludePath)</IncludePath>
     <LibraryPath>c:\Dev\Visual Leak Detector\lib\Win32;c:\Dev\Visual Leak Detector\lib\Win64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='MapEditor|Win32'">
-    <OutDir>$(SolutionDir)\lib\VS2013\$(JA2Config)_$(JA2LangPrefix)\$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)\build\VS2013\$(JA2Config)_$(JA2LangPrefix)\$(ProjectName)_$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)\lib\VS2022\$(JA2Config)_$(JA2LangPrefix)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)\build\VS2022\$(JA2Config)_$(JA2LangPrefix)\$(ProjectName)_$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_WithDebugInfo|Win32'">
-    <OutDir>$(SolutionDir)\lib\VS2013\$(JA2Config)_$(JA2LangPrefix)\$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)\build\VS2013\$(JA2Config)_$(JA2LangPrefix)\$(ProjectName)_$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)\lib\VS2022\$(JA2Config)_$(JA2LangPrefix)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)\build\VS2022\$(JA2Config)_$(JA2LangPrefix)\$(ProjectName)_$(Configuration)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

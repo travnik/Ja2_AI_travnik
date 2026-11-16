@@ -53,6 +53,7 @@ bin/
 *.sdf
 *.opensdf
 .vs/
+.editorconfig
 
 # ==========================================
 # Сторонние библиотеки (Опционально)
@@ -65,3 +66,15 @@ bin/
 /vs
 /Python
 /.idea
+/.opencode/instructions
+/opencode.jsonc
+/sourcecraft_history.md
+
+# ==========================================
+# Исходники VFS лежат в каталоге build, который игнорируется выше.
+# Возвращаем в git файлы проектов Visual Studio для VFS и 7z.
+# ==========================================
+!/ext/VFS/build/
+/ext/VFS/build/*
+!/ext/VFS/build/*.vcxproj
+!/ext/VFS/build/*.vcxproj.filters

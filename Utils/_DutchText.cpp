@@ -2386,6 +2386,7 @@ STR16 pSkillMenuStrings[] =	// TODO.Translate
 	L"Tear gas shell ($%d)",
 	L"Mustard gas shell ($%d)",
 	L"Napalm shell ($%d)",
+	L"SAM site artillery",	// travnik: artillery strike via captured SAM site
 };
 
 // TODO.Translate
@@ -7123,6 +7124,8 @@ STR16 New113Message[] =
 	L"Disarming of bomb failed. Resulting explosion damages %s's inventory and health",	//TODO.Translate	MSG113_DISARM_FAILED
 	L"Selected artillery ammo is not available.",	// MSG113_ARTILLERY_AMMO_UNAVAILABLE
 	L"Not enough money to call artillery.",	// MSG113_ARTILLERY_NOT_ENOUGH_MONEY
+	L"No operational SAM site under our control in its engagement zone.",	// MSG113_SAM_ARTILLERY_UNAVAILABLE
+	L"SAM site is not ready for another artillery strike yet.",	// MSG113_ARTILLERY_NOT_READY_YET
 };
 
 // TODO.Translate
@@ -9323,6 +9326,92 @@ STR16 TalkCursorStr[] =
 	L"Bad",
 };
 
+
+STR16 szIMPGearWebSiteText[] =	// TODO.Translate
+{
+	// IMP Gear Entrance
+	L"How should gear be selected?",
+	L"Old method: Random gear according to your choices",
+	L"New method: Free selection of gear",
+	L"Old method",
+	L"New method",
+
+	// IMP Gear Entrance
+	L"I.M.P. Equipment",
+	L"Additional Cost: %d$ (%d$ prepaid)",
+
+	// travnik: цена и крутость предмета в магазине IMP
+	L"Price: %d$  Coolness: %d",
+
+	// travnik: бюджет снаряжения на экране выбора
+	L"Gear: %d / %d $   Extra: %d $",
+	// travnik: подтверждение доплаты за снаряжение сверх бюджета
+	L"Gear exceeds the budget by %d$. Total to pay: %d$. Continue?",
+};
+
+STR16 szIMPGearPocketText[] =	// TODO.Translate
+{
+	L"Select helmet",
+	L"Select vest",
+	L"Select leg armor",
+	L"Select face gear",
+	L"Select face gear",
+
+	L"Select main gun",
+	L"Select sidearm",
+
+	L"Select LBE vest",
+	L"Select left LBE holster",
+	L"Select right LBE holster",
+	L"Select LBE combat pack",
+	L"Select LBE backpack",
+
+	L"Select launcher / rifle",
+	L"Select melee weapon",
+
+	L"Select additional items", //BIGPOCK1POS
+	L"Select additional items",
+	L"Select additional items",
+	L"Select additional items",
+	L"Select additional items",
+	L"Select additional items",
+	L"Select additional items",
+	L"Select kit item", //MEDPOCK1POS
+	L"Select kit item",
+	L"Select kit item",
+	L"Select kit item",
+	L"Select main gun ammo", //SMALLPOCK1POS
+	L"Select main gun ammo",
+	L"Select main gun ammo",
+	L"Select main gun ammo",
+	L"Select main gun ammo",
+	L"Select launcher / rifle ammo", //SMALLPOCK6POS
+	L"Select launcher / rifle ammo",
+	L"Select launcher / rifle ammo",
+	L"Select launcher / rifle ammo",
+	L"Select launcher / rifle ammo",
+	L"Select sidearm ammo", //SMALLPOCK11POS
+	L"Select sidearm ammo",
+	L"Select sidearm ammo",
+	L"Select sidearm ammo",
+	L"Select sidearm ammo",
+	L"Select sidearm ammo",
+	L"Select sidearm ammo",
+	L"Select sidearm ammo",
+	L"Select additional items", //SMALLPOCK19POS
+	L"Select additional items",
+	L"Select additional items",
+	L"Select additional items",
+	L"Select additional items",
+	L"Select additional items",
+	L"Select additional items",
+	L"Select additional items",
+	L"Select additional items",
+	L"Select additional items",
+	L"Select additional items",
+	L"Select additional items", //SMALLPOCK30POS
+	L"Left click to select item / Right click to close window",
+};
 // Flugente: gear templates
 STR16 szGearTemplateText[] =
 {

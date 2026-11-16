@@ -1956,6 +1956,9 @@ enum
 	// Flugente: added radio operator
 	IMP_RADIO_OPERATOR,
 
+	// silversurfer: added sidearm for standard weapons. Special weapons should come from traits.
+	IMP_SIDEARM,
+
 	MAX_IMP_ITEM_TYPES
 };
 
