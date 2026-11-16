@@ -83,6 +83,12 @@ class SOLDIERTYPE;
 #include "Facilities.h"
 #include "SquadBivouacManager.h"	// SQUAD_BIVOUAC
 
+// travnik: расчет выкупа за военнопленных
+#include "PrisonerRansom.h"
+
+// travnik: детерминированный ГПСЧ для защиты допроса от Save/Load
+#include "PrisonerRng.h"
+
 #include "Vehicles.h"
 
 #ifdef JA2UB
@@ -3282,7 +3288,11 @@ BOOL HandleSnitchExposition(SOLDIERTYPE *pSoldier)
 		uiCoverQuality += 10 * HAS_SKILL_TRAIT( pSoldier, STEALTHY_OT );
 	}
 
-	if( Random( (UINT32)uiSuspicion ) > Random( (UINT32)uiCoverQuality ) )
+	// travnik: seed из сохраняемого состояния, чтобы Save/Load не менял раскрытие снаitch-а
+	UINT32 uiSnitchSeed = CPrisonerRng::MakeSnitchExpositionSeed( SECTOR( pSoldier->sSectorX, pSoldier->sSectorY ), GetWorldTotalMin() / NUM_MIN_IN_HOUR, pSoldier->ubID, numprisoners );
+	CPrisonerRng snitchRng( uiSnitchSeed, gGameExternalOptions.fPrisonerInterrogationSaveLoadProtection );
+
+	if( snitchRng.Next( (UINT32)uiSuspicion ) > snitchRng.Next( (UINT32)uiCoverQuality ) )
 	{
 		// yes, he was exposed!
 
@@ -3292,19 +3302,19 @@ BOOL HandleSnitchExposition(SOLDIERTYPE *pSoldier)
 		// handle aftermath
 
 		// check if he managed to get out
-		if( EffectiveWisdom(pSoldier) / 10 > (INT16)PreRandom(100) ) // he noticed being exposed
+		if( EffectiveWisdom(pSoldier) / 10 > (INT16)snitchRng.PreNext(100) ) // he noticed being exposed
 		{
 			ScreenMsg( FONT_GRAY2, MSG_INTERFACE, pSnitchPrisonExposedStrings[ SNITCH_PRISON_EXPOSED_FINE_WISDOM ], pSoldier->GetName() );
 		}
-		else if (EffectiveLeadership(pSoldier) / 10 > (INT16)PreRandom(100)) // he talked his way out
+		else if (EffectiveLeadership(pSoldier) / 10 > (INT16)snitchRng.PreNext(100)) // he talked his way out
 		{
 			ScreenMsg( FONT_GRAY2, MSG_INTERFACE, pSnitchPrisonExposedStrings[ SNITCH_PRISON_EXPOSED_FINE_LEADERSHIP ], pSoldier->GetName() );
 		}
-		else if (EffectiveExpLevel(pSoldier, FALSE) > (INT16)PreRandom(100)) // he avoided ambush
+		else if (EffectiveExpLevel(pSoldier, FALSE) > (INT16)snitchRng.PreNext(100)) // he avoided ambush
 		{
 			ScreenMsg( FONT_GRAY2, MSG_INTERFACE, pSnitchPrisonExposedStrings[ SNITCH_PRISON_EXPOSED_FINE_EXPLEVEL ], pSoldier->GetName() );
 		}
-		else if( CalculateAllGuardsValueInPrison( pSoldier->sSectorX, pSoldier->sSectorY, pSoldier->bSectorZ ) > PreRandom(100) ) // guards prevented assassination
+		else if( CalculateAllGuardsValueInPrison( pSoldier->sSectorX, pSoldier->sSectorY, pSoldier->bSectorZ ) > snitchRng.PreNext(100) ) // guards prevented assassination
 		{
 			ScreenMsg( FONT_GRAY2, MSG_INTERFACE, pSnitchPrisonExposedStrings[ SNITCH_PRISON_EXPOSED_FINE_GUARDS], pSoldier->GetName() );
 		}
@@ -3315,7 +3325,7 @@ BOOL HandleSnitchExposition(SOLDIERTYPE *pSoldier)
 			UINT16 usDamageTaken = 0;
 
 			// decide prisoners' action
-			switch( PreRandom(4) )
+			switch( snitchRng.PreNext(4) )
 			{
 				case 0:
 					// drowning
@@ -3324,13 +3334,13 @@ BOOL HandleSnitchExposition(SOLDIERTYPE *pSoldier)
 						ubReactionTime--;
 						if ( gGameOptions.fNewTraitSystem )
 						{
-							if ((pSoldier->stats.bStrength + NUM_SKILL_TRAITS(pSoldier, ATHLETICS_NT) * 20) / 2 < (INT16)Random(100))
-								usDamageTaken += Random(10);
+							if ((pSoldier->stats.bStrength + NUM_SKILL_TRAITS(pSoldier, ATHLETICS_NT) * 20) / 2 < (INT16)snitchRng.Next(100))
+								usDamageTaken += snitchRng.Next(10);
 						}
 						else
 						{
-							if ((pSoldier->stats.bStrength + NUM_SKILL_TRAITS(pSoldier, HANDTOHAND_OT) * 20) / 2 < (INT16)Random(100))
-								usDamageTaken += Random(10);
+							if ((pSoldier->stats.bStrength + NUM_SKILL_TRAITS(pSoldier, HANDTOHAND_OT) * 20) / 2 < (INT16)snitchRng.Next(100))
+								usDamageTaken += snitchRng.Next(10);
 						}
 					}
 					// instead of normal damage take breath damage
@@ -3355,13 +3365,13 @@ BOOL HandleSnitchExposition(SOLDIERTYPE *pSoldier)
 						ubReactionTime--;
 						if ( gGameOptions.fNewTraitSystem )
 						{
-							if (((pSoldier->stats.bAgility + pSoldier->stats.bStrength) / 2 + NUM_SKILL_TRAITS(pSoldier, MARTIAL_ARTS_NT) * 20) / 2 < (INT16)Random(100))
-								usDamageTaken += Random(10);
+							if (((pSoldier->stats.bAgility + pSoldier->stats.bStrength) / 2 + NUM_SKILL_TRAITS(pSoldier, MARTIAL_ARTS_NT) * 20) / 2 < (INT16)snitchRng.Next(100))
+								usDamageTaken += snitchRng.Next(10);
 						}
 						else
 						{
-							if (((pSoldier->stats.bAgility + pSoldier->stats.bStrength) / 2 + NUM_SKILL_TRAITS(pSoldier, MARTIALARTS_OT) * 20) / 2 < (INT16)Random(100))
-								usDamageTaken += Random(10);
+							if (((pSoldier->stats.bAgility + pSoldier->stats.bStrength) / 2 + NUM_SKILL_TRAITS(pSoldier, MARTIALARTS_OT) * 20) / 2 < (INT16)snitchRng.Next(100))
+								usDamageTaken += snitchRng.Next(10);
 						}
 					}
 					// he's dead?
@@ -3382,13 +3392,13 @@ BOOL HandleSnitchExposition(SOLDIERTYPE *pSoldier)
 						ubReactionTime--;
 						if ( gGameOptions.fNewTraitSystem )
 						{
-							if ((pSoldier->stats.bAgility + NUM_SKILL_TRAITS(pSoldier, MELEE_NT) * 20) / 2 < (INT16)Random(100))
-								usDamageTaken += Random(10);
+							if ((pSoldier->stats.bAgility + NUM_SKILL_TRAITS(pSoldier, MELEE_NT) * 20) / 2 < (INT16)snitchRng.Next(100))
+								usDamageTaken += snitchRng.Next(10);
 						}
 						else
 						{
-							if ((pSoldier->stats.bAgility + NUM_SKILL_TRAITS(pSoldier, KNIFING_OT) * 20) / 2 < (INT16)Random(100))
-								usDamageTaken += Random(10);
+							if ((pSoldier->stats.bAgility + NUM_SKILL_TRAITS(pSoldier, KNIFING_OT) * 20) / 2 < (INT16)snitchRng.Next(100))
+								usDamageTaken += snitchRng.Next(10);
 						}
 					}
 					pSoldier->SoldierTakeDamage( 0, usDamageTaken, 0, usDamageTaken, TAKE_DAMAGE_BLADE, NOBODY, NOWHERE, 0, TRUE );
@@ -3409,13 +3419,13 @@ BOOL HandleSnitchExposition(SOLDIERTYPE *pSoldier)
 						ubReactionTime--;
 						if ( gGameOptions.fNewTraitSystem )
 						{
-							if ((pSoldier->stats.bStrength + NUM_SKILL_TRAITS(pSoldier, BODYBUILDING_NT) * 20) / 2 < (INT16)Random(100))
-								usDamageTaken += Random(10);
+							if ((pSoldier->stats.bStrength + NUM_SKILL_TRAITS(pSoldier, BODYBUILDING_NT) * 20) / 2 < (INT16)snitchRng.Next(100))
+								usDamageTaken += snitchRng.Next(10);
 						}
 						else
 						{
-							if ((pSoldier->stats.bStrength + NUM_SKILL_TRAITS(pSoldier, HANDTOHAND_OT) * 20) / 2 < (INT16)Random(100))
-								usDamageTaken += Random(10);
+							if ((pSoldier->stats.bStrength + NUM_SKILL_TRAITS(pSoldier, HANDTOHAND_OT) * 20) / 2 < (INT16)snitchRng.Next(100))
+								usDamageTaken += snitchRng.Next(10);
 						}
 					}
 					// instead of normal damage take breath damage
@@ -6689,6 +6699,10 @@ void HandlePrisonerProcessingInSector( INT16 sMapX, INT16 sMapY, INT8 bZ )
 
 	// we first interrogate admins, then troops, then elites, then specials (once we figure out who those are :-) )
 	// higher quality prisoners require more effort, but yield better rewards
+	// travnik: seed из сохраняемого состояния, чтобы Save/Load не менял исход допроса
+	UINT32 uiInterrogationSeed = CPrisonerRng::MakeInterrogationSeed( SECTOR( sMapX, sMapY ), GetWorldTotalMin() / NUM_MIN_IN_HOUR, interrogationpoints, oldinterrogationpoints, prisoners );
+	CPrisonerRng prisonerRng( uiInterrogationSeed, gGameExternalOptions.fPrisonerInterrogationSaveLoadProtection );
+
 	UINT8 interrogatedprisoners[PRISONER_MAX] = {0};
 
 	for (int i = PRISONER_ADMIN; i < PRISONER_MAX; ++i)
@@ -6719,17 +6733,17 @@ void HandlePrisonerProcessingInSector( INT16 sMapX, INT16 sMapY, INT8 bZ )
 	for ( UINT32 i = 0; i < prisonersinterrogated; ++i )
 	{
 		// we determine what happens to the prisoners
-		UINT8 result = Random( 100 );
+		UINT8 result = (UINT8)prisonerRng.Next( 100 );
 
 		// chance that prisoner will work on our side as militia
 		if ( result < gGameExternalOptions.ubPrisonerProcessDefectChance )
 		{
 			// troops are converted to militia, but there is a chance that they will be demoted in the process
-			if ( i >= interrogatedprisoners[PRISONER_ADMIN] + interrogatedprisoners[PRISONER_REGULAR] + interrogatedprisoners[PRISONER_ELITE] && Chance( 80 ) )
+			if ( i >= interrogatedprisoners[PRISONER_ADMIN] + interrogatedprisoners[PRISONER_REGULAR] + interrogatedprisoners[PRISONER_ELITE] && prisonerRng.Chance( 80 ) )
 				++turnedmilitia[PRISONER_OFFICER];
-			if ( i >= interrogatedprisoners[PRISONER_ADMIN] + interrogatedprisoners[PRISONER_REGULAR] && Chance( 80 ) )
+			if ( i >= interrogatedprisoners[PRISONER_ADMIN] + interrogatedprisoners[PRISONER_REGULAR] && prisonerRng.Chance( 80 ) )
 				++turnedmilitia[PRISONER_ELITE];
-			else if ( i >= interrogatedprisoners[PRISONER_ADMIN] && Chance( 80 ) )
+			else if ( i >= interrogatedprisoners[PRISONER_ADMIN] && prisonerRng.Chance( 80 ) )
 				++turnedmilitia[PRISONER_REGULAR];
 			else
 				++turnedmilitia[PRISONER_ADMIN];
@@ -6744,8 +6758,8 @@ void HandlePrisonerProcessingInSector( INT16 sMapX, INT16 sMapY, INT8 bZ )
 			UINT8 maxtries = 20;
 			for(UINT8 infotry = 0; infotry < maxtries; ++infotry)
 			{
-				UINT8 usX = 1 + Random( MAP_WORLD_X - 2 );
-				UINT8 usY = 1 + Random( MAP_WORLD_Y - 2 );
+				UINT8 usX = 1 + (UINT8)prisonerRng.Next( MAP_WORLD_X - 2 );
+				UINT8 usY = 1 + (UINT8)prisonerRng.Next( MAP_WORLD_Y - 2 );
 
 				// there need to be mobile enemies here - that the queen has troops in towns we do not own is hardly worthy information, and empty sectors aren't interesting
 				if ( NumMobileEnemiesInSector( usX, usY ) == 0 )
@@ -6758,13 +6772,13 @@ void HandlePrisonerProcessingInSector( INT16 sMapX, INT16 sMapY, INT8 bZ )
 				// enemy patrol detected
 				SectorInfo[ SECTOR( usX, usY ) ].uiFlags |= SF_ASSIGN_NOTICED_ENEMIES_HERE;
 
-				if ( Chance(gGameExternalOptions.ubPrisonerProcessInfoNumberChance) )
+				if ( prisonerRng.Chance(gGameExternalOptions.ubPrisonerProcessInfoNumberChance) )
 				{
 					// we also learned the number of enemies
 					SectorInfo[ SECTOR( usX, usY ) ].uiFlags |= SF_ASSIGN_NOTICED_ENEMIES_KNOW_NUMBER;
 				}
 
-				if ( Chance(gGameExternalOptions.ubPrisonerProcessInfoDirectionChance) )
+				if ( prisonerRng.Chance(gGameExternalOptions.ubPrisonerProcessInfoDirectionChance) )
 				{
 					// we also learned the direction of the patrol
 					SectorInfo[ SECTOR( usX, usY ) ].uiFlags |= SF_ASSIGN_NOTICED_ENEMIES_KNOW_DIRECTION;
@@ -6778,7 +6792,8 @@ void HandlePrisonerProcessingInSector( INT16 sMapX, INT16 sMapY, INT8 bZ )
 		// chance prisoner will grant us ransom money
 		else if ( result < gGameExternalOptions.ubPrisonerProcessDefectChance + gGameExternalOptions.ubPrisonerProcessInfoBaseChance + gGameExternalOptions.ubPrisonerProcessRansomBaseChance )
 		{
-			ransommoney += (Random(5) + 1) * 100;
+			// travnik: сумма выкупа зависит от типа военнопленного и прогресса игры
+			ransommoney += CPrisonerRansom::GetRansomMoneyByProcessedIndex( i, interrogatedprisoners );
 
 			++ransomscollected;
 		}
@@ -6790,7 +6805,7 @@ void HandlePrisonerProcessingInSector( INT16 sMapX, INT16 sMapY, INT8 bZ )
 
 		// there is a chance that escaped prisoners may return to the queen...
 		// sevenfm: don't change reinforcement pool when unlimited reinforcements enabled
-		if (Random(100) < gGameExternalOptions.ubPrisonerReturntoQueenChance && !gfUnlimitedTroops)
+		if (prisonerRng.Next(100) < gGameExternalOptions.ubPrisonerReturntoQueenChance && !gfUnlimitedTroops)
 			++giReinforcementPool;
 	}
 		
